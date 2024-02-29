@@ -139,7 +139,7 @@ for (i in 1:nrow(sims)) {
     rem <- bind_rows(rem, rem.i); ls <- bind_rows(ls, ls.i); ds <- bind_rows(ds, ds.i)
     rm(db.conn, rem.i, ls.i, ds.i)
   }
-  if (i%%10==0) print(paste0(i, ": ", dbname))
+  if (i%%16==0) print(paste0(round((i/nrow(sims)*100),1), " %: ", dbname))
 }; beep(0)
 
 saveRDS(ls, paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
@@ -159,6 +159,8 @@ rem <- readRDS(paste0("results/datasets/rem_", landscapename, "_raw.RDATA"))
 ds.ls <- readRDS(paste0("results/datasets/ds.ls_", landscapename, ".RDATA"))
 
 ds.ls <- list(tibble(), tibble(), tibble()); names(ds.ls) <- c("basal", "dom", "forest")
+
+# reference always baseline_rep1_size1_freq1_browsing1_fecundity100 (also for hot-dry runs)
 # prop of basal area decreased by more than 50 %
 ds.ls[["basal"]] <- ds %>% 
   group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
@@ -216,7 +218,6 @@ saveRDS(ds.ls, paste0("results/datasets/ds.ls_", landscapename, ".RDATA")); beep
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 ### line plots ####
-# var <- "fecundity"
 
 # over time
 overTime <- ds.ls[["basal"]] %>% 
@@ -236,20 +237,23 @@ overTime <- ds.ls[["basal"]] %>%
               ungroup() %>% rename('3. Remaining forest: stem density dropping below 50 trees/ha' = prop) %>% dplyr::select(-threshold)) 
 
 overTime %>% #summary()
-  filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") # test: props should always be 1
+  filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100",
+                           "hotdry_rep1_size1_freq1_browsing1_fecundity100")) # test: props should always be 1
 
 png(paste0("results/figures/lineplot_overtime_", landscapename ,".png"), res=200,
-    height=1000, width=2000)
+    height=1500, width=1500)
 overTime %>% 
   pivot_longer(cols=10:12) %>% 
   ggplot(aes(x=year+2020, y=value*100, group=identifier, col=climate)) +
   geom_line(linewidth=0.5) +
   facet_wrap(~name, ncol=1) +
+  scale_color_manual(values=c("baseline" ="blue", "hotdry" = "red")) +
   labs(x="Year", y="Proportion of unchanged landscape [%]", col="Climate scenario") +
   theme_bw()
 dev.off()
 
 # structure: basal area
+# var <- "fecundity"
 plot.basal.fc <- function(var) {
   others <- vars[vars %ni% var]
   copy <- overTime %>% filter(year==80)
@@ -263,11 +267,12 @@ plot.basal.fc <- function(var) {
     rename(prop = 10) %>% 
     ggplot(aes(x=var_use, y=prop*100, group=groups, col=climate)) +
     geom_line(linewidth=0.8) +
+    scale_color_manual(values=c("baseline" ="blue", "hotdry" = "red")) +
     labs(x=var, y="", col="Climate scenario") +
     theme_bw()
   
 }
-plot.basal.fc("fecundity")
+#plot.basal.fc("fecundity")
 basal.ls <- lapply(vars, plot.basal.fc)
 png(paste0("results/figures/lineplot_basal80_", landscapename ,".png"), res=200,
     height=1000, width=2000)
@@ -291,11 +296,12 @@ plot.dom.fc <- function(var) {
     rename(prop = 11) %>% 
     ggplot(aes(x=var_use, y=prop*100, group=groups, col=climate)) +
     geom_line(linewidth=0.8) +
+    scale_color_manual(values=c("baseline" ="blue", "hotdry" = "red")) +
     labs(x=var, y="", col="Climate scenario") +
     theme_bw()
   
 }
-plot.dom.fc("fecundity")
+#plot.dom.fc("fecundity")
 dom.ls <- lapply(vars, plot.dom.fc)
 png(paste0("results/figures/lineplot_dom80_", landscapename ,".png"), res=200,
     height=1000, width=2000)
@@ -319,11 +325,12 @@ plot.forest.fc <- function(var) {
     rename(prop = 12) %>% 
     ggplot(aes(x=var_use, y=prop*100, group=groups, col=climate)) +
     geom_line(linewidth=0.8) +
+    scale_color_manual(values=c("baseline" ="blue", "hotdry" = "red")) +
     labs(x=var, y="", col="Climate scenario") +
     theme_bw()
   
 }
-plot.forest.fc("fecundity")
+#plot.forest.fc("fecundity")
 forest.ls <- lapply(vars, plot.forest.fc)
 png(paste0("results/figures/lineplot_forest80_", landscapename ,".png"), res=200,
     height=1000, width=2000)
@@ -339,51 +346,69 @@ dev.off()
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 # structure
-png(paste0("results/figures/map_prop_basal80_baseline_", landscapename ,".png"), res=200,
-    height=1000, width=2000)
-ds.ls[["basal"]] %>% 
+basal.map <- ds.ls[["basal"]] %>% 
   filter(year==80,
-         climate=="baseline",
          threshold=="above") %>%
-  mutate(chances = length(unique(identifier))) %>% 
+  mutate(chances = length(unique(identifier))/2) %>%# /2 because of the 2 climate scenarios
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
   full_join(rid.df[rid.df$landscape=="bgd",]) %>% 
-  dplyr::select(x,y,unchanged) %>% 
-  rast() %>% plot(
-    main="1. Structure: basal area decreased by >50 % from reference\nPercentage of runs where cell's structure remained unchanged [%]")
+  dplyr::select(climate, x,y,unchanged)
+png(paste0("results/figures/map_prop_basal80_baseline_", landscapename ,".png"), res=200,
+    height=1000, width=1000)
+basal.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% 
+  rast() %>% plot(range=c(0,100), cex.main=0.5,
+    main="1. Structure: basal area decreased by >50 % from reference\nBaseline climate\nPercentage of runs where cell's structure remained unchanged [%]")
+dev.off()  
+png(paste0("results/figures/map_prop_basal80_hotdry_", landscapename ,".png"), res=200,
+    height=1000, width=1000)
+basal.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% 
+  rast() %>% plot(range=c(0,100), cex.main=0.5,
+                  main="1. Structure: basal area decreased by >50 % from reference\nHot-dry climate\nPercentage of runs where cell's structure remained unchanged [%]")
 dev.off()  
 
 # composition
-png(paste0("results/figures/map_prop_dom80_baseline_", landscapename ,".png"), res=200,
-    height=1000, width=2000)
-ds.ls[["dom"]] %>% 
+dom.map <- ds.ls[["dom"]] %>% 
   filter(year==80,
-         climate=="baseline",
          threshold=="same") %>%
-  mutate(chances = length(unique(identifier))) %>% 
+  mutate(chances = length(unique(identifier))/2) %>% 
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
   full_join(rid.df[rid.df$landscape=="bgd",]) %>% 
-  dplyr::select(x,y,unchanged) %>% 
-  rast() %>% plot(
-    main="2. Composition: dominant species changed from reference\nPercentage of runs where cell's dominant species remained unchanged [%]")
+  dplyr::select(x,y,unchanged, climate)
+png(paste0("results/figures/map_prop_dom80_baseline_", landscapename ,".png"), res=200,
+    height=1000, width=1000)
+dom.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% 
+  rast() %>% plot(range=c(0,100), cex.main=0.5,
+    main="2. Composition: dominant species changed from reference\nBaseline climate\nPercentage of runs where cell's dominant species remained unchanged [%]")
+dev.off()
+png(paste0("results/figures/map_prop_dom80_hotdry_", landscapename ,".png"), res=200,
+    height=1000, width=1000)
+dom.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% 
+  rast() %>% plot(range=c(0,100), cex.main=0.5,
+                  main="2. Composition: dominant species changed from reference\nHot-dry climate\nPercentage of runs where cell's dominant species remained unchanged [%]")
 dev.off()
 
 # forest
-png(paste0("results/figures/map_prop_forest80_baseline_", landscapename ,".png"), res=200,
-    height=1000, width=2000)
-ds.ls[["forest"]] %>% 
+forest.map <- ds.ls[["forest"]] %>% 
   filter(year==80,
-         climate=="baseline",
          threshold=="forest") %>%
-  mutate(chances = length(unique(identifier))) %>% 
+  mutate(chances = length(unique(identifier))/2) %>% 
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
   full_join(rid.df[rid.df$landscape=="bgd",]) %>% 
-  dplyr::select(x,y,unchanged) %>% 
-  rast() %>% plot(
-    main="3. Remaining forest: stem density dropping below 50 trees/ha\nPercentage of runs where cell remained forested [%]")
+  dplyr::select(x,y,unchanged, climate)
+png(paste0("results/figures/map_prop_forest80_baseline_", landscapename ,".png"), res=200,
+    height=1000, width=1000)
+forest.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% 
+  rast() %>% plot(range=c(0,100), cex.main=0.5,
+    main="3. Remaining forest: stem density dropping below 50 trees/ha\nBaseline climate\nPercentage of runs where cell remained forested [%]")
+dev.off()
+png(paste0("results/figures/map_prop_forest80_hotdry_", landscapename ,".png"), res=200,
+    height=1000, width=1000)
+forest.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% 
+  rast() %>% plot(range=c(0,100), cex.main=0.5,
+    main="3. Remaining forest: stem density dropping below 50 trees/ha\nHot-dry climate\nPercentage of runs where cell remained forested [%]")
 dev.off()
 
 
@@ -471,17 +496,17 @@ ls %>%
   geom_line(aes(group=groups), show.legend = F, alpha=0.6) +
   geom_line(data=mean_line, aes(y=mean, col=reorder(dist, distRate)), linewidth=2) +
   geom_line(data =  dist.ls %>% group_by(year, climate) %>% summarise(n = sum(basal_area_m2)) %>% mutate(groups = "Disturbance modules"),
-            col="black", linetype = 3, linewidth=2) +
+            col="red", linetype = 2, linewidth=2) +
   facet_grid(~climate) +
   labs(x="Year", y="Mean basal area [m²/ha]", col="Size and frequency modification", 
-       title="How does process modfication impact basal area development in BGNP?\nDotted line: simulation with disturbances simulated via modules instead of management\nColored lines: mean trajectory for the disturbance regime") +
+       title="How does process modfication impact basal area development in BGNP?\nDotted red line: simulation with disturbances simulated via modules instead of management\nColored lines: mean trajectory for the disturbance regime") +
   theme_bw()
 dev.off()
 
 # final basal area
 ## stratified by disturbance
 png(paste0("results/figures/landscapeWide_finalBasalArea_disturbances_", landscapename, ".png"), res=200,
-    height=1600, width=2400)
+    height=1600, width=3400)
 ls %>% 
   mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
   filter(year == 80) %>% 
@@ -495,21 +520,21 @@ ls %>%
   ggplot(aes(x=reorder(level, disturbanceRate), y=n, col=regen)) +
   geom_point(size=4, col="black") +
   geom_point(size=3) +
-  geom_hline(aes(yintercept=dist.ls %>% filter(year==80, climate=="baseline") %>% pull(basal_area_m2) %>% unique() %>% sum()),
-             linetype=3, linewidth=2) +
+  # geom_hline(aes(yintercept=dist.ls %>% filter(year==80, climate=="baseline") %>% pull(basal_area_m2) %>% unique() %>% sum()),
+  #            linetype=3, linewidth=2) +
   geom_hline(aes(yintercept = ls %>% filter(year==0) %>% pull(basal_area_m2) %>% unique() %>% sum()),
              col="black") +
   facet_grid(~climate) +
   labs(x="Disturbance rate modification", y="Mean basal area in 2100 [m²/ha]",
        col="Fecundity and browsing modification level",
-       title="Basal area in 2100: all 256 possible process modification combinations\nDotted line: value in 2100 with disturbance simulated via modules, baseline climate\nSolid line: value in 2020") +
+       title="Basal area in 2100: all 256 possible process modification combinations\nSolid line: value in 2020") +
   theme_bw() +
   theme(legend.position="bottom")
 dev.off()
 
 ## stratified by regeneration
 png(paste0("results/figures/landscapeWide_finalBasalArea_regeneration_", landscapename, ".png"), res=200,
-    height=1600, width=2400)
+    height=1600, width=3400)
 ls %>% 
   mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
   filter(year == 80) %>% 
@@ -548,7 +573,7 @@ ls %>%
   ggplot() +
   geom_line(aes(x=as.numeric(as.character(browsing)), y=n, col=as.factor(as.numeric(as.character(fecundity)))),
             linewidth=2) +
-  geom_point(data =  dist.ls %>% filter(year > 70) %>% group_by(climate) %>%  summarise(n = sum(basal_area_m2)/10),
+  geom_point(data =  dist.ls %>% filter(year > 70, climate=="baseline") %>% group_by(climate) %>% summarise(n = sum(basal_area_m2)/10),
              aes(x=1, y=n), col="black", size=4, shape=8) +
   facet_grid(~climate) +
   labs(x="browsing modification", y="Mean basal area in last sim. decade [m²/ha]", col="Fecundity modification [%]", 
@@ -581,10 +606,10 @@ ls %>%
               mutate(total = sum(basal_area_m2)) %>% 
               filter(species == common.species[["bgd"]][1]) %>% 
               mutate(n = basal_area_m2/total),
-            col="black", linetype = 3, linewidth=2) +
+            col="red", linetype = 2, linewidth=2) +
   facet_grid(~climate) +
   labs(x="Year", y=paste0("Proportion of ", common.species[["bgd"]][1], " [%, basal area]"), col="", 
-       title="How does the most common species fare in BGNP?\nDotted line: simulation with disturbances simulated via modules instead of management\nColored lines: mean trajectory for the disturbance regime") +
+       title="How does the most common species fare in BGNP?\nDotted red line: simulation with disturbances simulated via modules instead of management\nColored lines: mean trajectory for the disturbance regime") +
   theme_bw()
 dev.off()
 # map: spruce dominance
@@ -594,14 +619,36 @@ dist.ds %>% filter(climate=="hotdry", year == 80) %>% group_by(rid) %>%
   rast() %>% plot()
 
 # species composition: size x 10, freq x 10
+label.df <- data.frame(year=15, basal_area_m2=0.25, label=c("Reference conditions", "Most extreme scenario"),
+                       groups=c("size: 1 , freq: 1 , fecundity: 100 , browsing: 1",
+                                "size: 10 , freq: 10 , fecundity: 10 , browsing: 10"),
+                       climate="baseline")
 png(paste0("results/figures/landscapeWide_speciesComposition_relative_extremes_", landscapename, ".png"), res=200,
     height=2000, width=3000)
 ls %>% 
-  filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100", "baseline_rep1_size10_freq10_browsing10_fecundity10")) %>% 
-  mutate(species = ifelse(species %in% c("fasy", "piab", "abal", "lade", "acps"), species, "other")) %>% 
-  ggplot(aes(x=year, y=basal_area_m2, fill=species)) +
-  geom_bar(stat="identity", position=position_fill(), width=1.1) +
-  facet_grid(identifier~climate) +
+  filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100", "baseline_rep1_size10_freq10_browsing10_fecundity10",
+                           "hotdry_rep1_size1_freq1_browsing1_fecundity100", "hotdry_rep1_size10_freq10_browsing10_fecundity10")) %>% 
+  mutate(species = ifelse(species %in% c("fasy", "piab", "abal", "lade", "acps"), species, "other"),
+         groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
+  ggplot(aes(x=year, y=basal_area_m2)) +
+  geom_bar(aes(fill=species), stat="identity", position=position_fill(), width=1.1) +
+  geom_label(data=label.df, aes(label=label)) +
+  facet_grid(groups~climate) +
+  labs(x="Year", fill="Species", y="Proportion of basal area") +
+  theme_bw()
+dev.off()
+# absolute
+png(paste0("results/figures/landscapeWide_speciesComposition_absolute_extremes_", landscapename, ".png"), res=200,
+    height=2000, width=3000)
+ls %>% 
+  filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100", "baseline_rep1_size10_freq10_browsing10_fecundity10",
+                           "hotdry_rep1_size1_freq1_browsing1_fecundity100", "hotdry_rep1_size10_freq10_browsing10_fecundity10")) %>% 
+  mutate(species = ifelse(species %in% c("fasy", "piab", "abal", "lade", "acps"), species, "other"),
+         groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
+  ggplot(aes(x=year, y=basal_area_m2)) +
+  geom_bar(aes(fill=species), stat="identity", width=1.1) +
+  facet_grid(groups~climate) +
+  labs(x="Year", fill="Species", y="Mean basal area [m²/ha]") +
   theme_bw()
 dev.off()
 
@@ -622,13 +669,15 @@ rem %>%
   ggplot(aes(x=year, y=n)) +
   # geom_line(aes(group=groups), show.legend = F, alpha=0.6) +
   geom_line(data=mean_line.rem, aes(y=mean, col=reorder(dist, distRate)), linewidth=2) +
-  geom_line(data =  dist %>% group_by(year, climate) %>% summarise(n = sum(basal_area_m2)) %>% mutate(groups = "Disturbance modules"),
+  geom_line(data =  dist %>% filter(climate=="baseline") %>% group_by(year, climate) %>% summarise(n = sum(basal_area_m2)) %>% mutate(groups = "Disturbance modules"),
             col="black", linewidth=2) +
   scale_y_log10() +
   facet_grid(~climate) +
-  labs(x="Year", y="Trees killed by disturbance", col="", 
+  labs(x="Year", y="Basal area killed by disturbance [m²]", col="", 
        title="How does process modfication impact tree mortality in BGNP?\nBlack line: simulation with disturbances simulated via modules instead of management\nY-axis log10-transformed") +
   theme_bw()
 dev.off()
 
-
+rem %>% filter(climate=="baseline") %>% pull(basal_area_m2) %>% summary()
+rem %>% filter(climate=="hotdry") %>% pull(basal_area_m2) %>% summary()
+# different, but barely

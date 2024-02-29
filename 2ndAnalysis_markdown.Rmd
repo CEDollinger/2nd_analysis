@@ -1,0 +1,188 @@
+---
+title: "Preliminary analysis for the 2nd study"
+author: "CDollinger"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_depth: 2
+knit: (
+  function(inputFile, encoding) { 
+  
+    pSubTitle <- "2ndAnalysis";
+    rmarkdown::render( 
+      input       = inputFile, 
+      encoding    = "UTF-8", 
+      params      = list(sub_title = pSubTitle),      
+      output_file = pSubTitle) }
+      )
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("E:/PhD/Coordination/2_study/2nd_analysis")
+```
+
+# Preliminary results (29.02.2024)
+
+> I implemented all the changes we talked about in our last meeting:
+> 
+> * Instead of manipulating *sapStressThreshold* we now manipulate height growth (simulated via the browsing module, same browsing probability for all species)
+> * New modification levels: size x c(1,2,5,10), frequency x c(1,2,5,10), fecundity x c(1,1/2,1/5,1/10), browsing pressure x c(1,2,5,10)
+> * New output: dynamic stand in year 2020, 2050 and 2100
+> * Severity for all agents set to 90 % (and 100 for sapling during fire)
+> * Fire can only burn cells with a fuel load > 500 kg/ha
+> 
+> I then ran a complete suite of simulations for Berchtesgaden (4 patch size levels * 4 disturbance frequency levels * 4 fecundity levels * 4 browsing levels * 2 climate scenarios * 1 rep = 512 runs)
+>
+> Here are the results!
+
+## System breaking indicators
+
+Short recap of our indicators:
+
+1. Structure: basal area decreased by >50 % from reference
+
+2. Composition: dominant species changed from reference
+
+3. Remaining forest: stem density dropped below 50 trees/ha
+
+*Reference*: value under reference conditions (no process modification + baseline climate), calculated for each RU and each year
+
+
+### Indicators over time
+
+![](results/figures/lineplot_overtime_bgd_notbroken - Kopie.png)
+
+>
+> Structure changes very quickly until mid of century, then recovers under hot-dry climate, and continues to change under baseline climate, lowest value ~15%
+>
+> Composition changes continuously for both baseline and hot-dry conditions, lowest value ~50%
+>
+> Very little forest loss, lowest value ~90 %
+>
+
+
+### Structure compared between the scenarios
+
+Values in year 2100
+
+![](results/figures/lineplot_basal80_bgd.png)
+
+>  
+> All processes play a role in structural change, disturbance processes (first row) however seem to have a bigger impact (relatively little change at modification level 1)
+> 
+> More structural change under baseline climate
+> 
+
+
+### Composition compared between the scenarios
+
+Values in year 2100
+
+![](results/figures/lineplot_dom80_bgd.png)
+
+>  
+> Mainly the disturbance processes (first row) seem to have an impact on compositional change (relatively little change at modification level 1) - especially under modification level 10
+> 
+> Compositional change similar under baseline and hot-dry climate
+> 
+
+
+### Forest loss compared between the scenarios
+
+Values in year 2100
+
+![](results/figures/lineplot_forest80_bgd.png)
+
+>  
+> Basically only regeneration processes (second row) seem to have an impact on forest loss (relatively little change at modification level 1)
+> 
+> More forest loss under baseline climate
+> 
+
+
+## Spatial patterns
+
+
+1. Structure: highest probability of change in higher elevations (left: baseline climate, right: hot-dry climate)
+
+
+![](results/figures/map_prop_basal80_baseline_bgd.png){width=49%}
+![](results/figures/map_prop_basal80_hotdry_bgd.png){width=49%}
+
+
+
+2. Composition: diffuse pattern
+
+
+![](results/figures/map_prop_dom80_baseline_bgd.png){width=49%}
+![](results/figures/map_prop_dom80_hotdry_bgd.png){width=49%}
+
+
+
+3. Forest loss: highest probability of change at tree line
+
+
+![](results/figures/map_prop_forest80_baseline_bgd.png){width=49%}
+![](results/figures/map_prop_forest80_hotdry_bgd.png){width=49%}
+
+
+## Landscape wide changes
+
+### Mean basal area 
+
+
+* Basal area varied across the simulation period and runs (Dotted red line: simulation with disturbances simulated via modules instead of management):
+
+
+![](results/figures/landscapeWide_basalArea_overTime_bgd.png)
+
+
+* Basal area only consistently dropped below the 2020-value in 2100 once the disturbance rate was increased by more than 25. Under hot-dry conditions it even took a disturbance rate increase of x100.
+
+
+![](results/figures/landscapeWide_finalBasalArea_disturbances_bgd.png)
+
+
+### Species composition
+
+
+ * Species composition remained relatively stable under reference conditions (= no process modification, first row) and differences between the climate scenarios were small. (Interesting! I would have expected spruce to decrease due to higher temperatures under hot-dry but it still seems to do fairly well without climate change-mediated disturbance change)
+
+
+* Under the most extreme scenario (size * 10 + frequency * 10 + fecundity/10 + browsing * 10, second row) spruce decreased while all other species increased - especially larch (makes sense, it should be able to do very well in all those disturbance patches). Fir also benefited from the increase in disturbances:
+
+
+![](results/figures/landscapeWide_speciesComposition_relative_extremes_bgd.png)
+
+
+* Absolute basal area decreased strongly under the extreme scenario:
+
+
+![](results/figures/landscapeWide_speciesComposition_absolute_extremes_bgd.png)
+
+
+* Closer look at spruce: its proportion really remains fairly stable under hot-dry climate as long as the disturbance regime doesn't change much from reference conditions (Dotted red line: simulation with disturbances simulated via modules instead of management)
+
+
+![](results/figures/landscapeWide_mostCommonSpecies_overTime_bgd.png)
+
+
+
+### Trees killed
+
+
+* The disturbance modules (black line in baseline facet) kills more trees than our reference disturbance regime (maybe because our assumed severity of 90% of susceptible trees is too low as wind events usually have higher severities?)
+
+
+![](results/figures/landscapeWide_treesKilled_bgd.png)
+
+
+* Basal area killed is very similar between the climate scenarios. 
+
+
+![](results/figures/landscapeWide_treesKilled_bgd_comparison.png)
+
+\~ the end (for now...) \~
+
