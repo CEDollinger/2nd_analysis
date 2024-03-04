@@ -35,7 +35,7 @@ helper.files[["bgd"]][["stand"]] <- rast("../project2ndStudy/projectTest_bgd/gis
 helper.files[["bgd"]][["elev"]] <- rast("../project2ndStudy/projectTest_bgd/gis/dem100_rid.asc") %>% 
   resample(., helper.files[["bgd"]][["ru"]])
 helper.files[["bgd"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "../project2ndStudy/projectTest_bgd/database/species_bgd.sqlite") %>%
-  tbl(., "species") %>% collect() %>% select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
+  tbl(., "species") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
   rename(species = shortName) %>% mutate(lightResponseClass = as.numeric(lightResponseClass)) %>% 
   mutate(species.code = as.numeric(as.factor(species))) %>% 
   mutate(species.code = ifelse(species %in% common.species[["bgd"]], species.code, 0))
@@ -46,7 +46,7 @@ helper.files[["grte"]][["stand"]] <- rast("../project2ndStudy/projectTest_grte/g
 helper.files[["grte"]][["elev"]] <- rast("../project2ndStudy/projectTest_grte/gis/landscape_DEM.txt") %>%
   resample(., helper.files[["grte"]][["ru"]])
 helper.files[["grte"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "../project2ndStudy/projectTest_grte/database/species_grte.sqlite") %>%
-  tbl(., "species") %>% collect() %>% select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
+  tbl(., "species") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
   rename(species = shortName) %>% mutate(lightResponseClass = as.numeric(lightResponseClass)) %>%
   mutate(species.code = as.numeric(as.factor(species))) %>%
   filter(species %ni% c("Potr_backup", "Pial_backup_org", "Pico_backup")) %>%
@@ -58,7 +58,7 @@ helper.files[["stoko"]][["stand"]] <- rast("../project2ndStudy/projectTest_stoko
 helper.files[["stoko"]][["elev"]] <- rast("../project2ndStudy/projectTest_stoko/gis/jpn_elv_clipClim_JGD2000Zone13_res100m_cropped.asc") %>%
   resample(., helper.files[["stoko"]][["ru"]])
 helper.files[["stoko"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "../project2ndStudy/projectTest_stoko/database/species_stoko.sqlite") %>%
-  tbl(., "speciesParameters") %>% collect() %>% select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
+  tbl(., "speciesParameters") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
   rename(species = shortName) %>% mutate(lightResponseClass = as.numeric(lightResponseClass)) %>%
   mutate(species.code = as.numeric(as.factor(species))) %>%
   mutate(species.code = ifelse(species %in% common.species$stoko, species.code, 0))
@@ -79,7 +79,7 @@ for (landscape in 1:3) {
 # A. --- ####################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-landscapename <- "stoko"
+landscapename <- "grte"
 # all possible simulation runs (for now)
 sims <- expand_grid(climate=c("baseline", "hotdry"), rep=c("1"), 
                     sizeMods=c("1", "2", "5", "10"), freqMods=c("1", "2", "5", "10"), 
@@ -237,7 +237,7 @@ overTime <- ds.ls[["basal"]] %>%
 
 overTime %>% #summary()
   filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100",
-                           "hotdry_rep1_size1_freq1_browsing1_fecundity100")) # test: props should always be 1
+                           "hotdry_rep1_size1_freq1_browsing1_fecundity100")) # test: props should always be 1 for baseline
 
 png(paste0("results/figures/lineplot_overtime_", landscapename ,".png"), res=200,
     height=1500, width=1500)
@@ -270,9 +270,7 @@ plot.basal.fc <- function(var) {
     labs(x=var, y="", col="Climate scenario") +
     theme_bw()
   
-}
-#plot.basal.fc("fecundity")
-basal.ls <- lapply(vars, plot.basal.fc)
+}; basal.ls <- lapply(vars, plot.basal.fc)
 png(paste0("results/figures/lineplot_basal80_", landscapename ,".png"), res=200,
     height=1000, width=2000)
 ggpubr::ggarrange(basal.ls[[1]], basal.ls[[2]], basal.ls[[3]], basal.ls[[4]], common.legend = T) %>% 
@@ -299,9 +297,8 @@ plot.dom.fc <- function(var) {
     labs(x=var, y="", col="Climate scenario") +
     theme_bw()
   
-}
-#plot.dom.fc("fecundity")
-dom.ls <- lapply(vars, plot.dom.fc)
+}; dom.ls <- lapply(vars, plot.dom.fc)
+
 png(paste0("results/figures/lineplot_dom80_", landscapename ,".png"), res=200,
     height=1000, width=2000)
 ggpubr::ggarrange(dom.ls[[1]], dom.ls[[2]], dom.ls[[3]], dom.ls[[4]], common.legend = T) %>% 
@@ -328,9 +325,7 @@ plot.forest.fc <- function(var) {
     labs(x=var, y="", col="Climate scenario") +
     theme_bw()
   
-}
-#plot.forest.fc("fecundity")
-forest.ls <- lapply(vars, plot.forest.fc)
+}; forest.ls <- lapply(vars, plot.forest.fc)
 png(paste0("results/figures/lineplot_forest80_", landscapename ,".png"), res=200,
     height=1000, width=2000)
 ggpubr::ggarrange(forest.ls[[1]], forest.ls[[2]], forest.ls[[3]], forest.ls[[4]], common.legend = T) %>% 
@@ -348,7 +343,8 @@ dev.off()
 basal.map <- ds.ls[["basal"]] %>% 
   filter(year==80,
          threshold=="above") %>%
-  mutate(chances = length(unique(identifier))/2) %>%# /2 because of the 2 climate scenarios
+  group_by(climate) %>% 
+  mutate(chances = length(unique(identifier))) %>% ungroup() %>% 
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
   full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
@@ -357,13 +353,13 @@ basal.map <- ds.ls[["basal"]] %>%
 png(paste0("results/figures/map_prop_basal80_baseline_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 basal.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>% 
-  rast() %>% plot(range=c(0,100), cex.main=0.5,
+  rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
     main="1. Structure: basal area decreased by >50 % from reference\nBaseline climate\nPercentage of runs where cell's structure remained unchanged [%]")
 dev.off()  
 png(paste0("results/figures/map_prop_basal80_hotdry_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 basal.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>% 
-  rast() %>% plot(range=c(0,100), cex.main=0.5,
+  rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
                   main="1. Structure: basal area decreased by >50 % from reference\nHot-dry climate\nPercentage of runs where cell's structure remained unchanged [%]")
 dev.off()  
 
@@ -371,7 +367,8 @@ dev.off()
 dom.map <- ds.ls[["dom"]] %>% 
   filter(year==80,
          threshold=="same") %>%
-  mutate(chances = length(unique(identifier))/2) %>% 
+  group_by(climate) %>% 
+  mutate(chances = length(unique(identifier))) %>% ungroup() %>% 
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
   full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
@@ -380,13 +377,13 @@ dom.map <- ds.ls[["dom"]] %>%
 png(paste0("results/figures/map_prop_dom80_baseline_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 dom.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>% 
-  rast() %>% plot(range=c(0,100), cex.main=0.5,
+  rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
     main="2. Composition: dominant species changed from reference\nBaseline climate\nPercentage of runs where cell's dominant species remained unchanged [%]")
 dev.off()
 png(paste0("results/figures/map_prop_dom80_hotdry_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 dom.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>% 
-  rast() %>% plot(range=c(0,100), cex.main=0.5,
+  rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
                   main="2. Composition: dominant species changed from reference\nHot-dry climate\nPercentage of runs where cell's dominant species remained unchanged [%]")
 dev.off()
 
@@ -394,7 +391,8 @@ dev.off()
 forest.map <- ds.ls[["forest"]] %>% 
   filter(year==80,
          threshold=="forest") %>%
-  mutate(chances = length(unique(identifier))/2) %>% 
+  group_by(climate) %>% 
+  mutate(chances = length(unique(identifier))) %>% ungroup() %>% 
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
   full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
@@ -402,13 +400,13 @@ forest.map <- ds.ls[["forest"]] %>%
 png(paste0("results/figures/map_prop_forest80_baseline_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 forest.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>%  
-  rast() %>% plot(range=c(0,100), cex.main=0.5,
+  rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
     main="3. Remaining forest: stem density dropping below 50 trees/ha\nBaseline climate\nPercentage of runs where cell remained forested [%]")
 dev.off()
 png(paste0("results/figures/map_prop_forest80_hotdry_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 forest.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>%  
-  rast() %>% plot(range=c(0,100), cex.main=0.5,
+  rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
     main="3. Remaining forest: stem density dropping below 50 trees/ha\nHot-dry climate\nPercentage of runs where cell remained forested [%]")
 dev.off()
 
@@ -640,6 +638,7 @@ ls %>%
   labs(x="Year", fill="Species", y="Proportion of basal area") +
   theme_bw()
 dev.off()
+
 # absolute
 png(paste0("results/figures/landscapeWide_speciesComposition_absolute_extremes_", landscapename, ".png"), res=200,
     height=2000, width=3000)
@@ -655,6 +654,9 @@ ls %>%
   theme_bw()
 dev.off()
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+## trees killed output ####
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # trees killed
 mean_line.rem <- rem %>% 
   group_by(year, climate, rep, size, freq, fecundity, browsing) %>% 
@@ -662,12 +664,6 @@ mean_line.rem <- rem %>%
   group_by(size, freq, climate, rep, year) %>% 
   summarise(mean = mean(n)) %>% ungroup() %>% 
   mutate(dist=paste(size, freq), distRate = as.numeric(size) * as.numeric(freq)) 
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-## trees killed output ####
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
 
 png(paste0("results/figures/landscapeWide_treesKilled_", landscapename, ".png"), res=200,
     height=2000, width=3000)
