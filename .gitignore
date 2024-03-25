@@ -3,3 +3,5 @@ helper_files/
 *.Rproj.user
 *.html
 *.Rhistory
+.Rproj.user
+.Rhistory

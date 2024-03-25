@@ -73,15 +73,11 @@ for (landscape in 1:3) {
   rid.df <- bind_rows(rid.df, rid_i);rm(rid_i)
 }
 
-
-
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Analysis ####################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 landscapename <- "bgd"
-
 # all possible simulation runs (for now)
 sims <- expand_grid(climate=c("baseline", "hotdry"), rep=c("1"), 
                     sizeMods=c("1", "2", "5", "10"), freqMods=c("1", "2", "5", "10"), 
@@ -92,7 +88,6 @@ ist <- data.frame(dbname=dir(paste0("../project2ndStudy/projectTest_", landscape
 
 # identify which simulations are missing
 missing <- anti_join(sims, ist)
-
 
 ls <- readRDS(paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
 ds <- readRDS(paste0("results/datasets/ds_", landscapename, "_raw.RDATA"))
@@ -106,7 +101,7 @@ for (i in 1:nrow(sims)) {
     db.conn <- dbConnect(RSQLite::SQLite(),
                          dbname = dbname) # output_baseline_rep1_size1_freq1_browsing1_fecundity75
     ls.i <- tbl(db.conn, "landscape") %>% 
-      dplyr::select(year, species, count_ha, basal_area_m2, gwl_m3, volume_m3, height_avg_m) %>% 
+      dplyr::select(year, species, count_ha, basal_area_m2, gwl_m3, volume_m3, height_avg_m, cohort_count_ha) %>% 
       collect() %>% 
       mutate(climate = sims$climate[i], rep = sims$rep[i], size = sims$sizeMods[i], freq = sims$freqMods[i], 
              browsing = sims$browsingMods[i], fecundity = sims$fecundityMods[i],
@@ -481,6 +476,63 @@ dist.ds <- bind_rows(dist.ds1, dist.ds2); rm(dist.ds1, dist.ds2)
 saveRDS(dist, paste0("results/datasets/dist_", landscapename, ".RDATA"))
 saveRDS(dist.ls, paste0("results/datasets/dist.ls_", landscapename, ".RDATA"))
 saveRDS(dist.ds, paste0("results/datasets/dist.ds_", landscapename, ".RDATA"))
+
+
+ls %>% 
+  filter(climate=="hotdry") %>% 
+  mutate(species = ifelse(species %in% common.species[[landscapename]], species, "other")) %>% 
+  dplyr::select(year, climate, species, count_ha, cohort_count_ha, basal_area_m2) %>% 
+  pivot_longer(cols=4:6) %>% 
+  group_by(year, species, name) %>% 
+  summarise(value=mean(value)) %>% 
+  ggplot(aes(x=year, y=value, fill=species)) +
+  geom_bar(stat="identity", width=1.1) +
+  geom_vline(aes(xintercept=31)) +
+  facet_wrap(~name, scales = "free_y", ncol=1) +
+  theme_bw()
+
+ls %>% 
+  filter(climate=="hotdry", fecundity=="100", browsing=="1", size=="1", freq=="1",
+         species %in% common.species[[landscapename]]) %>% 
+  ggplot(aes(x=year, y=dbh_avg_cm, color=species)) +
+  geom_line(linewidth=2) +
+  theme_bw()
+
+
+db.conn <- dbConnect(RSQLite::SQLite(), paste0("../project2ndStudy/projectTest_stoko/database/stoko_change_dry_hot.sqlite"))
+clim.df <- data.frame(); tables <- dbListTables(db.conn)
+for (i in 1:length(tables)) {
+  clim.df <- bind_rows(clim.df, tbl(db.conn, tables[i]) %>% 
+    filter(year > 2020) %>% 
+    group_by(year, month) %>% 
+    summarise(prec=mean(prec), min_temp=mean(min_temp), max_temp=mean(max_temp), rad=mean(rad), vpd=mean(vpd)) %>%
+    mutate(mean_temp=(max_temp+min_temp)/2) %>% 
+    collect() %>% 
+    mutate(table=tables[i]))
+  print(i)
+}
+dbDisconnect(db.conn); rm(db.conn)
+
+
+
+clim.df %>% 
+  mutate(season = ifelse(month %in% 3:5, "1_spring",
+                                 ifelse(month %in% 6:8, "2_summer", 
+                                        ifelse(month %in% 9:11, "3_autumn", "4_winter")))) %>% 
+  group_by(year, season) %>% 
+  summarise(prec=mean(prec), min_temp=mean(min_temp), max_temp=mean(max_temp), 
+            mean_temp=mean(mean_temp), rad=mean(rad), vpd=mean(vpd)) %>% 
+  ungroup() %>% 
+  mutate(year = year-2020) %>% 
+  pivot_longer(cols=prec:vpd) %>% 
+  ggplot(aes(x=year, y=value, col=season)) +
+  geom_line(linewidth=2) +
+  geom_vline(aes(xintercept=31)) +
+  facet_grid(season~name) +
+  labs(y="Temperature in °C or precipitation in mm", x="Year",
+       title="Mean daily climate variables over all 475 climate clusters in Shiretoko") +
+  theme_bw()
+
 
 # mean basal area over time
 (mean_line <- ls %>% 
