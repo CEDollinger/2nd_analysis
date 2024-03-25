@@ -1,2 +1,5 @@
 results/
-.Rproj.user
+helper_files/
+*.Rproj.user
+*.html
+*.Rhistory

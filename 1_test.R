@@ -7,6 +7,7 @@ library(beepr)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path)); getwd() # set wd to file location
 landscapes <- c("bgd", "grte", "stoko")
 vars <- c("size", "freq", "fecundity", "browsing")
+#
 
 # set up ####
 # Most common species ###
@@ -76,10 +77,11 @@ for (landscape in 1:3) {
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# A. --- ####################################################################################################################
+# Analysis ####################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-landscapename <- "grte"
+landscapename <- "bgd"
+
 # all possible simulation runs (for now)
 sims <- expand_grid(climate=c("baseline", "hotdry"), rep=c("1"), 
                     sizeMods=c("1", "2", "5", "10"), freqMods=c("1", "2", "5", "10"), 
@@ -90,6 +92,11 @@ ist <- data.frame(dbname=dir(paste0("../project2ndStudy/projectTest_", landscape
 
 # identify which simulations are missing
 missing <- anti_join(sims, ist)
+
+
+ls <- readRDS(paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
+ds <- readRDS(paste0("results/datasets/ds_", landscapename, "_raw.RDATA"))
+rem <- readRDS(paste0("results/datasets/rem_", landscapename, "_raw.RDATA"))
 
 # read in landscape and landscape_removed output
 rem <- data.frame(); ls <- data.frame(); ds <- data.frame(); i<-1
@@ -146,9 +153,6 @@ saveRDS(ls, paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
 saveRDS(ds, paste0("results/datasets/ds_", landscapename, "_raw.RDATA"))
 saveRDS(rem, paste0("results/datasets/rem_", landscapename, "_raw.RDATA")); beep(0)
 
-ls <- readRDS(paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
-ds <- readRDS(paste0("results/datasets/ds_", landscapename, "_raw.RDATA"))
-rem <- readRDS(paste0("results/datasets/rem_", landscapename, "_raw.RDATA"))
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 ## dynamic stand ####
@@ -354,7 +358,7 @@ png(paste0("results/figures/map_prop_basal80_baseline_", landscapename ,".png"),
     height=1000, width=1000)
 basal.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>% 
   rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
-    main="1. Structure: basal area decreased by >50 % from reference\nBaseline climate\nPercentage of runs where cell's structure remained unchanged [%]")
+                  main="1. Structure: basal area decreased by >50 % from reference\nBaseline climate\nPercentage of runs where cell's structure remained unchanged [%]")
 dev.off()  
 png(paste0("results/figures/map_prop_basal80_hotdry_", landscapename ,".png"), res=200,
     height=1000, width=1000)
@@ -378,7 +382,7 @@ png(paste0("results/figures/map_prop_dom80_baseline_", landscapename ,".png"), r
     height=1000, width=1000)
 dom.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>% 
   rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
-    main="2. Composition: dominant species changed from reference\nBaseline climate\nPercentage of runs where cell's dominant species remained unchanged [%]")
+                  main="2. Composition: dominant species changed from reference\nBaseline climate\nPercentage of runs where cell's dominant species remained unchanged [%]")
 dev.off()
 png(paste0("results/figures/map_prop_dom80_hotdry_", landscapename ,".png"), res=200,
     height=1000, width=1000)
@@ -401,13 +405,13 @@ png(paste0("results/figures/map_prop_forest80_baseline_", landscapename ,".png")
     height=1000, width=1000)
 forest.map %>% filter(climate=="baseline") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>%  
   rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
-    main="3. Remaining forest: stem density dropping below 50 trees/ha\nBaseline climate\nPercentage of runs where cell remained forested [%]")
+                  main="3. Remaining forest: stem density dropping below 50 trees/ha\nBaseline climate\nPercentage of runs where cell remained forested [%]")
 dev.off()
 png(paste0("results/figures/map_prop_forest80_hotdry_", landscapename ,".png"), res=200,
     height=1000, width=1000)
 forest.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% filter(!is.na(x)) %>%  
   rast() %>% plot(range=c(0,100), cex.main=0.5, type="continuous",
-    main="3. Remaining forest: stem density dropping below 50 trees/ha\nHot-dry climate\nPercentage of runs where cell remained forested [%]")
+                  main="3. Remaining forest: stem density dropping below 50 trees/ha\nHot-dry climate\nPercentage of runs where cell remained forested [%]")
 dev.off()
 
 
@@ -419,7 +423,7 @@ basal.rast.df <- ds.ls[["basal"]] %>%
                            "baseline_rep1_size1_freq1_browsing10_fecundity100",
                            "baseline_rep1_size1_freq10_browsing1_fecundity100",
                            "baseline_rep1_size10_freq1_browsing1_fecundity100")) %>% 
-         mutate(year = paste("year", year, sep=""))
+  mutate(year = paste("year", year, sep=""))
 basal.rast.ls <- base::split(basal.rast.df, list(basal.rast.df$identifier, basal.rast.df$year), sep="; ")
 
 toRast.fc <- function(x) {
@@ -544,7 +548,7 @@ ls %>%
          regen=1/as.numeric(as.character(fecundity))*as.numeric(as.character(browsing)),
          dist = paste(size, freq)) %>% 
   mutate(dist=factor(dist, levels=c("1 1", "1 2", "2 1", "2 2", "1 5", "5 1", "1 10", "10 1",
-                                      "2 5", "5 2", "10 2", "2 10", "5 5", "10 5", "5 10", "10 10"))) %>% 
+                                    "2 5", "5 2", "10 2", "2 10", "5 5", "10 5", "5 10", "10 10"))) %>% 
   ggplot(aes(x=reorder(level, regen), y=n, col=dist)) +
   geom_point(size=4, col="black") +
   geom_point(size=3) +
@@ -657,7 +661,7 @@ dev.off()
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 ## trees killed output ####
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# trees killed
+
 mean_line.rem <- rem %>% 
   group_by(year, climate, rep, size, freq, fecundity, browsing) %>% 
   summarise(n = sum(basal_area_m2)) %>% 
@@ -685,4 +689,68 @@ dev.off()
 
 rem %>% filter(climate=="baseline") %>% pull(basal_area_m2) %>% summary()
 rem %>% filter(climate=="hotdry") %>% pull(basal_area_m2) %>% summary()
-# different, but barely
+rem %>% group_by(climate) %>% summarise(sum_basal = sum(basal_area_m2))
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+## patch output ####
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+ref.df <- read_csv("helper_files/ref.df.csv")
+
+# requirements for the management intervention to count as a disturbance patch:
+## needs to be forested (before_ba > 0, n_cells > 0)
+## trees need to have been killed (killed_ba > 0)
+
+i<-1; patch.df <- data.frame()
+for (i in 1:nrow(sims)) {
+  dbname <- paste0("../project2ndStudy/projectTest_", landscapename, "/output/patch_output/output_patches_",
+                   landscapename, "_", sims$climate[i], "_rep", sims$rep[i], "_size", sims$sizeMods[i],
+                   "_freq", sims$freqMods[i], "_browsing", sims$browsingMods[i], "_fecundity", sims$fecundityMods[i], ".csv")
+  if (file.exists(dbname)) {
+    patch.df <- bind_rows(patch.df, 
+                          read_delim(dbname) %>% 
+                            mutate(landscape=landscapename,
+                                   climate=sims$climate[i], rep=sims$rep[i], size=sims$sizeMods[i], freq=sims$freqMods[i], 
+                                   browsing=sims$browsingMods[i], fecundity=sims$fecundityMods[i],
+                                   n_cells = ifelse(killed_ba == 0, 0, n_cells)) %>% 
+                            filter(n_cells > 0)
+    )
+  }
+  #if (i%%16==0) print(paste0(round((i/nrow(sims)*100),1), " %: ", dbname))
+}; write_csv(patch.df, paste0("results/datasets/patch.df_", landscapename, ".csv"))
+
+patch.df %>% 
+  group_by(landscape, climate, rep, size, freq, browsing, fecundity, agent) %>% 
+  summarise(size_actual = mean(n_cells), 
+            events_actual = n()) %>% 
+  full_join(ref.df[ref.df$landscape==landscapename,]) %>% 
+  mutate(size_expected = size_expected * mean(as.numeric(size)),
+         events_expected = events_expected * mean(as.numeric(freq)),
+         area_expected = size_expected * events_expected/100,
+         area_actual = size_actual * events_actual/100,
+         area_diff = (area_actual-area_expected)/area_expected) %>% 
+  summary()
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# DISCARDED ####
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+# landscapename <- "grte"
+# # mean simulated patch size per agent from 2021-2100 under reference climate
+# patch.lib <- readRDS(paste0("../prep/data/patch.lib_", landscapename,".RDATA"))
+# (agent.mean <- patch.lib[["baseline_wet_warm"]] %>% # all patches under reference climate for that landscape
+#   filter(year < 81, # only patches from 2021-2100
+#          genesis == "simulated") %>% 
+#   distinct() %>% 
+#   group_by(agent) %>% 
+#   summarise(mean_size=mean(size), # mean patch size per agent between 2021-2100
+#             events = round(sum(n())/20)) %>% ungroup() %>% # mean total number of events per agent between 2021-2100
+#   mutate(landscape = landscapename,
+#          events = ifelse(agent == "bite", events/20, events),
+#          mean_size = ifelse(agent == "bite", mean_size*20, mean_size)))
+# rm(patch.lib)
+# 
+# ref.df <- data.frame()
+# ref.df <- bind_rows(ref.df, agent.mean)
+# ref.df <- ref.df %>% rename(size_expected = mean_size, events_expected=events)
+# write_csv(ref.df, "helper_files/ref.df.csv")
