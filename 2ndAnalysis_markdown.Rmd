@@ -176,7 +176,7 @@ Values in year 2100
 ### Basal area killed
 
 
-* The disturbance modules (bark beetle + wind; black line in baseline facet) kill more basal area than our reference disturbance regime (maybe because our assumed severity of 90% of susceptible trees is too low as wind events usually have higher severities?):
+* The disturbance modules (bark beetle + wind; black line in baseline facet) killed more basal area than our reference disturbance regime (maybe because our assumed severity of 90% of susceptible trees is too low as wind events usually have higher severities?):
 
 
 ![](results/figures/landscapeWide_treesKilled_bgd.png)
@@ -326,7 +326,7 @@ Values in year 2100
 ### Basal area killed
 
 
-* The wind module (black line in baseline facet) kills about the same amount of basal area as our reference disturbance regime:
+* The wind module (black line in baseline facet) killed about the same amount of basal area as our reference disturbance regime:
 
 
 ![](results/figures/landscapeWide_treesKilled_stoko.png)
@@ -364,11 +364,11 @@ Short recap of our indicators:
 ![](results/figures/lineplot_overtime_grte.png)
 
 >
-> Structure changes very quickly until mid of century, then sometimes recovers under hot-dry climate, and continues to change under baseline climate, lowest value ~5%
+> Structure changes very quickly for the disturbance modification scenarios, for the baseline disturbance scenarios it decreases linearly and quicker for hot-dry climate, lowest value ~0%
 >
-> Composition changes pretty much continuously for both baseline and hot-dry conditions, lowest value ~15%
+> Composition decreases more in the first half of the centuy and then stays relatively stable, more change under baseline climate, lowest value ~60%
 >
-> Very little forest loss at the end of the century (but lots in middle!), lowest value ~75 %
+> Basically all forest lost by end of century for the disturbance modification scenarios, under baseline disturbances slow decrease, higher under hot-dry climate, lowest value ~1 %
 >
 
 
@@ -379,9 +379,9 @@ Values in year 2100
 ![](results/figures/lineplot_basal80_grte.png)
 
 >  
-> Pretty wild pattern for disturbance processes (first row) -> maybe runs that favor Potr? Fecundity seems to have a lesser impact on structural change than browsing
+>  Size and frequency both heavily impact structural change. Fecundity seems to have a lesser impact on structural change than browsing
 > 
-> Generally more structural change under baseline climate
+> Generally more structural change under hot-dry climate
 > 
 
 
@@ -392,7 +392,7 @@ Values in year 2100
 ![](results/figures/lineplot_dom80_grte.png)
 
 >  
-> Disturbance processes (first row) have a strong impact on compositional change. Here, fecundity seems to have a *stronger* impact than browsing
+> Disturbance processes (first row) have a stronger impact on compositional change than regeneration processes. Pattern somewhat unclear, sometimes "recovery" of compositional indicator?
 > 
 > Compositional change much higher under hot-dry climate
 > 
@@ -405,16 +405,16 @@ Values in year 2100
 ![](results/figures/lineplot_forest80_grte.png)
 
 >  
-> All processes (disturbance, regeneration, climate) seem to have an impact on forest loss - especially browsing
+> All processes (disturbance, regeneration, climate) seem to have an impact on forest loss but especially disturbance size and frequency
 > 
-> Less forest loss under hot-dry climate ?!
+> Generally more forest loss under hot-dry climate
 > 
 
 
 ## Spatial patterns
 
 
-1. Structure: high probability of change pretty much everywhere, at least under baseline climate (left)
+1. Structure: high probability of change pretty much everywhere, especially under hot-dry climate (left)
 
 
 ![](results/figures/map_prop_basal80_baseline_grte.png){width=49%}
@@ -430,7 +430,7 @@ Values in year 2100
 
 
 
-3. Forest loss: highest probability of change at tree line, but overall very little
+3. Forest loss: high probability of change basically everywhere
 
 
 ![](results/figures/map_prop_forest80_baseline_grte.png){width=49%}
@@ -442,13 +442,13 @@ Values in year 2100
 ### Mean basal area 
 
 
-* Basal area varied strongly across the simulation period, and runs but only differed slightly between baseline and hot-dry climate (Dotted red line: simulation with disturbances simulated via modules instead of management):
+* Basal area varied strongly across different disturbance modification scenarios but only differed slightly between baseline and hot-dry climate (Dotted red line: simulation with disturbances simulated via modules instead of management):
 
 
 ![](results/figures/landscapeWide_basalArea_overTime_grte.png)
 
 
-* Basal area consistently dropped below the 2020-value in 2100. Somehow higher final basal area under disturbance rate x 100 (might be due to simulation error though, see above):
+* Basal area consistently dropped below the 2020-value in 2100. Basal area drops super low under the disturbance modification scenarios:
 
 
 ![](results/figures/landscapeWide_finalBasalArea_disturbances_grte.png)
@@ -460,19 +460,19 @@ Values in year 2100
  * Species composition remained relatively stable under reference conditions (= no process modification, first row). Differences between the climate scenarios were small but added up over the simulation period.
 
 
-* Under the extreme process modification scenario *Populus tremula* increased at the detriment of *Pinus contorta*:
+* Under the extreme process modification scenario *Populus tremula* and *Pseudotsuga menziensii glauca* increased at the detriment of *Pinus contorta*:
 
 
 ![](results/figures/landscapeWide_speciesComposition_relative_extremes_grte.png)
 
 
-* Absolute basal area dropped to nearly zero under the extreme process modification scenario until mainly *Populus tremula* starts coming up again:
+* Absolute basal area dropped to nearly zero under the extreme process modification scenarios:
 
 
 ![](results/figures/landscapeWide_speciesComposition_absolute_extremes_grte.png)
 
 
-* Closer look at *Pinus contorta*, the originally dominant species: its proportion really remains fairly stable under baseline and decreased under hot-dry climate. Modifications of the disturbance regime generally had a negative impact on its abundance (Dotted red line: simulation with disturbances simulated via modules instead of management)
+* Closer look at *Pinus contorta*, the originally dominant species: its proportion really remains fairly stable under baseline and hot-dry climate. Different disturbance modification scenarios had different impacts on its abundance (Dotted red line: simulation with disturbances simulated via modules instead of management)
 
 
 ![](results/figures/landscapeWide_mostCommonSpecies_overTime_grte.png)
@@ -482,13 +482,13 @@ Values in year 2100
 ### Basal area killed
 
 
-* The wind and fire modules (black line in baseline facet) kill about the same amount of basal area as our reference disturbance regime:
+* The bite and fire modules (black line in baseline facet) killed about the same amount of basal area as our reference disturbance regime. Basal area killed decreased under the disturbance modification scenarios as less were available for killing:
 
 
 ![](results/figures/landscapeWide_treesKilled_grte.png)
 
 
-* Basal area killed was higher under hot-dry climate: 
+* Basal area killed was very similar under baseline and hot-dry climate: 
 
 
 ![](results/figures/landscapeWide_treesKilled_grte_comparison.png)
