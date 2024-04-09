@@ -4,6 +4,7 @@ library(RSQLite); library(dbplyr)
 library(terra)
 library(beepr)
 "%ni%" <- Negate("%in%")
+options(dplyr.summarise.inform = FALSE, readr.show_col_types = FALSE)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path)); getwd() # set wd to file location
 landscapes <- c("bgd", "grte", "stoko")
 vars <- c("size", "freq", "fecundity", "browsing")
@@ -71,172 +72,203 @@ for (landscape in 1:3) {
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Analysis ####################################################################################################################
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-landscape_i <- 1
-for (landscape_i in 1:3)
+# Analysis ###########################################################################################################################################
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ls <- readRDS("results/datasets/ls.ls.RDATA")
+ds <- readRDS("results/datasets/ds.ls.RDATA")
+rem <- readRDS("results/datasets/rem.ls.RDATA")
+
+missing.ls <- list(c(), c(), c()); names(missing.ls) <- landscapes; ls.ls <- missing.ls; rem.ls <- missing.ls; patch.ls <- missing.ls
+ds.ls.i <- list(tibble(), tibble(), tibble()); names(ds.ls.i) <- c("basal", "dom", "forest")
+ds.ls <- list(ds.ls.i, ds.ls.i, ds.ls.i); names(ds.ls) <- landscapes; rm(ds.ls.i)
+landscape_i <- 2; i<-1
+for (landscape_i in 1:3) {
   landscapename <- landscapes[landscape_i]
-master <- read_delim(paste0("../project2ndStudy/dss/breakingTheSystem_", toupper(landscapename), "/cluster_master_", landscapename, ".csv"))
+  master <- read_delim(paste0("../project2ndStudy/dss/breakingTheSystem_", toupper(landscapename), "/cluster_master_", landscapename, ".csv"))
+  
+  # reference conditions for calculating differences in basal area / dominant species / regime shift
+  db.conn <- dbConnect(RSQLite::SQLite(), paste0("raw_data/breakingTheSystem_", toupper(landscapename) ,"_Results/data1/output.sqlite"))
+  ds.ref <- tbl(db.conn, "dynamicstand") %>% 
+    dplyr::select(-ru) %>% 
+    collect() %>% 
+    rename(basal_area_m2 = basalarea_sum, count_ha = if_height_0_1_0_sum) %>% 
+    mutate(climate = master$climate[1], rep = master$rep[1], size = master$sizeMod[1], freq = master$freqMod[1], 
+           browsing = master$browsingMod[1], fecundity = master$fecundityMod[1],
+           identifier = paste0(master$climate[1], "_rep", master$rep[1], "_size", master$sizeMod[1], "_freq", master$freqMod[1], 
+                               "_browsing", master$browsingMod[1], "_fecundity", master$fecundityMod[1])) %>% 
+    mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+           freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+           fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+           browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+           landscape = landscapename)
+  dbDisconnect(db.conn); rm(db.conn)
+  
+  rem <- data.frame(); ls <- data.frame(); ds.basal <- data.frame(); ds.dom <- data.frame(); ds.forest <- data.frame(); missing <- c(NA); patch <- data.frame()
+  for (i in c(1, sample(2:2560, 50))) { # nrow(master)) {
+    dbname <- paste0("raw_data/breakingTheSystem_", toupper(landscapename) ,"_Results/data", master$run_id[i], "/output.sqlite")
+    patch_file <- paste0("raw_data/breakingTheSystem_", toupper(landscapename) ,"_Results/data", master$run_id[i], "/patches.csv")
+    if (file.exists(dbname) & file.exists(patch_file)) {
+      db.conn <- dbConnect(RSQLite::SQLite(), dbname = dbname) # output_baseline_rep1_size1_freq1_browsing1_fecundity75
 
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      ## landscape output ####
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      ls.i <- tbl(db.conn, "landscape") %>%
+        dplyr::select(year, species, count_ha, basal_area_m2, gwl_m3, volume_m3, height_avg_m, cohort_count_ha) %>%
+        collect() %>%
+        mutate(climate = master$climate[i], rep = master$rep[i], size = master$sizeMod[i], freq = master$freqMod[i],
+               browsing = master$browsingMod[i], fecundity = master$fecundityMod[i],
+               identifier = paste0(master$climate[i], "_rep", master$rep[i], "_size", master$sizeMod[i], "_freq", master$freqMod[i],
+                                   "_browsing", master$browsingMod[i], "_fecundity", master$fecundityMod[i])) %>%
+        mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+               freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+               fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+               browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+               landscape = landscapename)
 
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      # landscape_remove output ####
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      rem.i <- tbl(db.conn, "landscape_removed") %>%
+        dplyr::select(year, species, count, basal_area_m2, volume_m3, dbh_class, reason) %>%
+        collect() %>%
+        mutate(climate = master$climate[i], rep = master$rep[i], size = master$sizeMod[i], freq = master$freqMod[i],
+               browsing = master$browsingMod[i], fecundity = master$fecundityMod[i],
+               identifier = paste0(master$climate[i], "_rep", master$rep[i], "_size", master$sizeMod[i], "_freq", master$freqMod[i],
+                                   "_browsing", master$browsingMod[i], "_fecundity", master$fecundityMod[i])) %>%
+        mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+               freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+               fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+               browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+               landscape = landscapename)
 
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      # dynamicstand output ####
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      ds.i <- tbl(db.conn, "dynamicstand") %>%
+        dplyr::select(-ru) %>%
+        collect() %>%
+        rename(basal_area_m2 = basalarea_sum, count_ha = if_height_0_1_0_sum) %>%
+        mutate(climate = master$climate[i], rep = master$rep[i], size = master$sizeMod[i], freq = master$freqMod[i],
+               browsing = master$browsingMod[i], fecundity = master$fecundityMod[i],
+               identifier = paste0(master$climate[i], "_rep", master$rep[i], "_size", master$sizeMod[i], "_freq", master$freqMod[i],
+                                   "_browsing", master$browsingMod[i], "_fecundity", master$fecundityMod[i])) %>%
+        mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+               freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+               fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+               browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+               landscape = landscapename)
 
+      # reference always baseline_rep1_size1_freq1_browsing1_fecundity100 (also for hot-dry runs)
+      # prop of basal area decreased by more than 50 %
+      ds.basal.i <- ds.i %>%
+        group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+        summarise(basal_c = sum(basal_area_m2)) %>% ungroup() %>% # basal area sum in 2020, 2050, 2100
+        inner_join(ds.ref %>%
+                    filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") %>%
+                    group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+                    summarise(basal_ref = sum(basal_area_m2)) %>% ungroup() %>% # basal area sum in 2020, 2050, 2100 under reference conditions
+                    dplyr::select(rid, basal_ref, year), by = join_by(rid, year),
+                  multiple = "all") %>%
+        filter(!is.na(basal_ref)) %>% # filter out RUs for which no reference conditions exist
+        group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+        mutate(basal_diff = (basal_c-basal_ref)/basal_ref, # relative change in basal area sum
+               threshold = ifelse(basal_diff < -0.5, "below", "above"), # count RUs where basal area dropped by more than 50% from reference; unidirectional: only if DECREASE > 50%
+               n_rid = length(unique(rid))) %>% ungroup()
 
-# all possible simulation runs (for now)
-sims <- expand_grid(climate=c("baseline", "hotdry"), rep=as.character(1:5), 
-                    sizeMods=c("1", "2", "5", "10"), freqMods=c("1", "2", "5", "10"), 
-                    browsingMods=c("1", "2", "5", "10"), fecundityMods= c("100", "50", "20", "10")); sims$dbname <- 
-  paste0("output_", landscapename, "_", sims$climate, "_rep", sims$rep, "_size", sims$sizeMods, 
-         "_freq", sims$freqMods, "_browsing", sims$browsingMods, "_fecundity", sims$fecundityMods, ".sqlite"); sims
-ist <- data.frame(dbname=dir(paste0("../project2ndStudy/projectTest_", landscapename, "/output/"), pattern = "browsing"))  
+      # prop of dominant species changed
+      ds.dom.i <- ds.i %>%
+        group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+        filter(basal_area_m2 == max(basal_area_m2)) %>% ungroup() %>% # species with max basal area in 2020, 2050, 2100
+        rename(dom_c = species) %>%
+        dplyr::select(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, dom_c, year) %>%
+        inner_join(ds.ref %>%
+                    filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") %>%
+                    group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+                    filter(basal_area_m2 == max(basal_area_m2)) %>% ungroup() %>% # species with max basal area in 2020, 2050, 2100 under reference conditions
+                    rename(dom_ref = species) %>%
+                    dplyr::select(rid, dom_ref, year), by = join_by(rid, year),
+                  multiple = "all") %>% #summary()
+        filter(!is.na(dom_ref)) %>% # filter out RUs for which no reference conditions exist
+        group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+        mutate(threshold = ifelse(dom_c == dom_ref, "same", "different"), # count RUs where dominant species changed
+               n_rid = length(unique(rid))) %>% ungroup()
 
-# identify which simulations are missing
-missing <- anti_join(sims, ist)
+      # prop of trees count > 50
+      ds.forest.i <- ds.i %>%
+        group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+        summarise(count_sum_c = sum(count_ha)) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100
+        inner_join(ds.ref %>%
+                    filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") %>%
+                    group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+                    summarise(count_sum_ref = sum(count_ha)) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100 under reference conditions
+                    dplyr::select(rid, count_sum_ref, year), by = join_by(rid, year),
+                  multiple = "all") %>%
+        filter(!is.na(count_sum_ref)) %>% # filter out RUs for which no reference conditions exist
+        group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
+        mutate(threshold = as.factor(ifelse(count_sum_c < 50 & count_sum_ref >= 50, "non-forest", "forest")), # count RUs where tree count dropped below 50 (and reference value is also higher than 50)
+               n_rid = length(unique(rid))) %>% ungroup()
 
-ls <- readRDS(paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
-ds <- readRDS(paste0("results/datasets/ds_", landscapename, "_raw.RDATA"))
-rem <- readRDS(paste0("results/datasets/rem_", landscapename, "_raw.RDATA"))
+      dbDisconnect(db.conn)
 
-# read in landscape and landscape_removed output
-rem <- data.frame(); ls <- data.frame(); ds <- data.frame(); i<-1
-for (i in 1:nrow(sims)) {
-  dbname <- paste0("../project2ndStudy/projectTest_", landscapename, "/output/", sims$dbname[i])
-  if (file.exists(dbname)) {
-    db.conn <- dbConnect(RSQLite::SQLite(),
-                         dbname = dbname) # output_baseline_rep1_size1_freq1_browsing1_fecundity75
-    ls.i <- tbl(db.conn, "landscape") %>% 
-      dplyr::select(year, species, count_ha, basal_area_m2, gwl_m3, volume_m3, height_avg_m, cohort_count_ha) %>% 
-      collect() %>% 
-      mutate(climate = sims$climate[i], rep = sims$rep[i], size = sims$sizeMods[i], freq = sims$freqMods[i], 
-             browsing = sims$browsingMods[i], fecundity = sims$fecundityMods[i],
-             identifier = paste0(sims$climate[i], "_rep", sims$rep[i], "_size", sims$sizeMods[i], "_freq", sims$freqMods[i], 
-                                 "_browsing", sims$browsingMods[i], "_fecundity", sims$fecundityMods[i])) %>% 
-      mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
-             freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
-             fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-             browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
-             landscape = landscapename)
-    rem.i <- tbl(db.conn, "landscape_removed") %>% 
-      dplyr::select(year, species, count, basal_area_m2, volume_m3, dbh_class, reason) %>% 
-      collect() %>% 
-      mutate(climate = sims$climate[i], rep = sims$rep[i], size = sims$sizeMods[i], freq = sims$freqMods[i], 
-             browsing = sims$browsingMods[i], fecundity = sims$fecundityMods[i],
-             identifier = paste0(sims$climate[i], "_rep", sims$rep[i], "_size", sims$sizeMods[i], "_freq", sims$freqMods[i], 
-                                 "_browsing", sims$browsingMods[i], "_fecundity", sims$fecundityMods[i])) %>% 
-      mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
-             freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
-             fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-             browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
-             landscape = landscapename)
-    ds.i <- tbl(db.conn, "dynamicstand") %>% 
-      dplyr::select(-ru) %>% 
-      collect() %>% 
-      rename(basal_area_m2 = basalarea_sum, count_ha = if_height_0_1_0_sum) %>% 
-      mutate(climate = sims$climate[i], rep = sims$rep[i], size = sims$sizeMods[i], freq = sims$freqMods[i], 
-             browsing = sims$browsingMods[i], fecundity = sims$fecundityMods[i],
-             identifier = paste0(sims$climate[i], "_rep", sims$rep[i], "_size", sims$sizeMods[i], "_freq", sims$freqMods[i], 
-                                 "_browsing", sims$browsingMods[i], "_fecundity", sims$fecundityMods[i])) %>% 
-      mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
-             freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
-             fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-             browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
-             landscape = landscapename)
-    dbDisconnect(db.conn)
-    rem <- bind_rows(rem, rem.i); ls <- bind_rows(ls, ls.i); ds <- bind_rows(ds, ds.i)
-    rm(db.conn, rem.i, ls.i, ds.i)
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      # patch output ####
+      # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+      # requirements for the management intervention to count as a disturbance patch:
+      ## needs to be forested (before_ba > 0, n_cells > 0)
+      ## trees need to have been killed (killed_ba > 0)
+
+      patch.i <- read_delim(patch_file) %>%
+        mutate(landscape=landscapename,
+               climate=master$climate[i], rep=master$rep[i], size=master$sizeMod[i], freq=master$freqMod[i],
+               browsing=master$browsingMod[i], fecundity=master$fecundityMod[i],
+               n_cells = ifelse(killed_ba == 0, 0, n_cells)) %>%
+        filter(n_cells > 0)
+
+      # combine all scenarios for the different outputs
+      rem <- bind_rows(rem, rem.i); ls <- bind_rows(ls, ls.i); patch <- bind_rows(patch, patch.i)
+      ds.basal <- bind_rows(ds.basal, ds.basal.i); ds.dom <- bind_rows(ds.dom, ds.dom.i); ds.forest <- bind_rows(ds.forest, ds.forest.i)
+      rm(db.conn, rem.i, ls.i, patch.i, ds.i, ds.basal.i, ds.dom.i, ds.forest.i)
+    } else { 
+      missing <- c(missing, i); print(paste0("Oh no! Seems like I (", i, ") am missing")) 
+    }
+    if (i%%64==0) print(paste0(round((i/nrow(master)*100),1), " %: rep ", master$rep[i], ", ", i))
+    print(i)
   }
-  if (i%%16==0) print(paste0(round((i/nrow(sims)*100),1), " %: ", dbname))
-}; beep(0)
+  ds.ls[[landscapename]][["basal"]] <- ds.basal; ds.ls[[landscapename]][["dom"]] <- ds.dom; ds.ls[[landscapename]][["forest"]] <- ds.forest
+  missing.ls[[landscapename]] <- missing
+  ls.ls[[landscapename]] <- ls; rem.ls[[landscapename]] <- rem; patch.ls[[landscapename]] <- patch
+  rm(ls, rem, patch, ds.ref, ds.basal, ds.dom, ds.forest, master, dbname, missing); gc()
+  
+}; saveRDS(ds.ls, "results/datasets/ds.ls.RDATA"); saveRDS(ls.ls, "results/datasets/ls.ls.RDATA"); saveRDS(patch.ls, "results/datasets/patch.ls.RDATA"); saveRDS(rem.ls, "results/datasets/rem.ls.RDATA"); saveRDS(missing.ls, "results/datasets/missing.ls.RDATA")
 
-saveRDS(ls, paste0("results/datasets/ls_", landscapename, "_raw.RDATA"))
-saveRDS(ds, paste0("results/datasets/ds_", landscapename, "_raw.RDATA"))
-saveRDS(rem, paste0("results/datasets/rem_", landscapename, "_raw.RDATA")); beep(0)
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-## dynamic stand ####
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
-### datasets ####
-
-ds.ls <- readRDS(paste0("results/datasets/ds.ls_", landscapename, ".RDATA"))
-
-ds.ls <- list(tibble(), tibble(), tibble()); names(ds.ls) <- c("basal", "dom", "forest")
-
-# reference always baseline_rep1_size1_freq1_browsing1_fecundity100 (also for hot-dry runs)
-# prop of basal area decreased by more than 50 %
-ds.ls[["basal"]] <- ds %>% 
-  group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-  summarise(basal_c = sum(basal_area_m2)) %>% ungroup() %>% # basal area sum in 2020, 2050, 2100 
-  left_join(ds %>% 
-              filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") %>% 
-              group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-              summarise(basal_ref = sum(basal_area_m2)) %>% ungroup() %>% # basal area sum in 2020, 2050, 2100 under reference conditions
-              dplyr::select(rid, basal_ref, year),
-            multiple = "all") %>% 
-  filter(!is.na(basal_ref)) %>% # filter out RUs for which no reference conditions exist
-  group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-  mutate(basal_diff = (basal_c-basal_ref)/basal_ref, # relative change in basal area sum
-         threshold = ifelse(basal_diff < -0.5, "below", "above"), # count RUs where basal area dropped by more than 50% from reference; unidirectional: only if DECREASE > 50%
-         n_rid = length(unique(rid))) %>% ungroup()
-
-# prop of dominant species changed 
-ds.ls[["dom"]] <- ds %>% 
-  group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-  filter(basal_area_m2 == max(basal_area_m2)) %>% ungroup() %>% # species with max basal area in 2020, 2050, 2100 
-  rename(dom_c = species) %>% 
-  dplyr::select(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, dom_c, year) %>% 
-  full_join(ds %>% 
-              filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") %>% 
-              group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-              filter(basal_area_m2 == max(basal_area_m2)) %>% ungroup() %>% # species with max basal area in 2020, 2050, 2100 under reference conditions
-              rename(dom_ref = species) %>% 
-              dplyr::select(rid, dom_ref, year),
-            multiple = "all") %>% #summary()
-  filter(!is.na(dom_ref)) %>% # filter out RUs for which no reference conditions exist
-  group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-  mutate(threshold = ifelse(dom_c == dom_ref, "same", "different"), # count RUs where dominant species changed
-         n_rid = length(unique(rid))) %>% ungroup() 
-
-
-# prop of trees count > 50 
-ds.ls[["forest"]] <- ds %>% 
-  group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-  summarise(count_sum_c = sum(count_ha)) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100 
-  full_join(ds %>% 
-              filter(identifier == "baseline_rep1_size1_freq1_browsing1_fecundity100") %>% 
-              group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-              summarise(count_sum_ref = sum(count_ha)) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100 under reference conditions
-              dplyr::select(rid, count_sum_ref, year),
-            multiple = "all") %>% 
-  filter(!is.na(count_sum_ref)) %>% # filter out RUs for which no reference conditions exist
-  group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
-  mutate(threshold = as.factor(ifelse(count_sum_c < 50 & count_sum_ref >= 50, "non-forest", "forest")), # count RUs where tree count dropped below 50 (and reference value is also higher than 50)
-         n_rid = length(unique(rid))) %>% ungroup() 
-
-saveRDS(ds.ls, paste0("results/datasets/ds.ls_", landscapename, ".RDATA")); beep(0)
-
+# note
+## date:
+## server:
+## landscape(s) finished and saved:
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 ### line plots ####
 
 # over time
-overTime <- ds.ls[["basal"]] %>% 
+overTime <- ds.ls[[landscapename]][["basal"]] %>% 
   group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
   summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
   filter(threshold == "above") %>% # only keep proportion of unchanged landscape
   ungroup() %>% rename('1. Structure: basal area decreased by >50 % from reference' = prop) %>% dplyr::select(-threshold) %>% 
-  full_join(ds.ls[["dom"]] %>% 
+  full_join(ds.ls[[landscapename]][["dom"]] %>% 
               group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
               summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
               filter(threshold == "same") %>% # only keep proportion of unchanged landscape
-              ungroup() %>% rename('2. Composition: dominant species changed from reference' = prop) %>% dplyr::select(-threshold)) %>% 
-  full_join(ds.ls[["forest"]] %>% # summary()
+              ungroup() %>% rename('2. Composition: dominant species changed from reference' = prop) %>% dplyr::select(-threshold),
+            by = join_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year)) %>% 
+  full_join(ds.ls[[landscapename]][["forest"]] %>% # summary()
               group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
               summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
               filter(threshold == "forest") %>% # only keep proportion of unchanged landscape
-              ungroup() %>% rename('3. Remaining forest: stem density dropping below 50 trees/ha' = prop) %>% dplyr::select(-threshold)) 
+              ungroup() %>% rename('3. Remaining forest: stem density dropping below 50 trees/ha' = prop) %>% dplyr::select(-threshold),
+            by = join_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year)) 
 
 overTime %>% #summary()
   filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100",
@@ -343,7 +375,7 @@ dev.off()
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 # structure
-basal.map <- ds.ls[["basal"]] %>% 
+basal.map <- ds.ls[[landscapename]][["basal"]] %>% 
   filter(year==80,
          threshold=="above") %>%
   group_by(climate) %>% 
@@ -367,7 +399,7 @@ basal.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% filter(!
 dev.off()  
 
 # composition
-dom.map <- ds.ls[["dom"]] %>% 
+dom.map <- ds.ls[[landscapename]][["dom"]] %>% 
   filter(year==80,
          threshold=="same") %>%
   group_by(climate) %>% 
@@ -391,14 +423,14 @@ dom.map %>% filter(climate=="hotdry") %>% dplyr::select(-climate) %>% filter(!is
 dev.off()
 
 # forest
-forest.map <- ds.ls[["forest"]] %>% 
+forest.map <- ds.ls[[landscapename]][["forest"]] %>% 
   filter(year==80,
          threshold=="forest") %>%
   group_by(climate) %>% 
   mutate(chances = length(unique(identifier))) %>% ungroup() %>% 
   group_by(rid, climate) %>% 
   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>% 
-  full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
+  full_join(rid.df[rid.df$landscape==landscapename,], by = join_by(rid)) %>% 
   dplyr::select(x,y,unchanged, climate)
 png(paste0("results/figures/map_prop_forest80_baseline_", landscapename ,".png"), res=200,
     height=1000, width=1000)
@@ -418,64 +450,26 @@ dev.off()
 ## landscape output ####
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-# runs with disturbance modules
-dist <- readRDS(paste0("results/datasets/dist_", landscapename, ".RDATA"))
-dist.ls <- readRDS(paste0("results/datasets/dist.ls_", landscapename, ".RDATA"))
-dist.ds <- readRDS(paste0("results/datasets/dist.ds_", landscapename, ".RDATA"))
-
-# baseline climate
-db.conn <- dbConnect(RSQLite::SQLite(), paste0("../project2ndStudy/projectTest_", landscapename,"/output/",landscapename, "_baseline_disturbanceModulesEnabled.sqlite"))
-dist1 <- tbl(db.conn, "landscape_removed") %>% 
-  collect() %>% 
-  mutate(climate = "baseline")
-dist.ls1 <- tbl(db.conn, "landscape") %>% 
-  collect() %>% 
-  mutate(climate = "baseline")
-dist.ds1 <- tbl(db.conn, "dynamicstand") %>% 
-  collect() %>% 
-  mutate(climate = "baseline")
-dbDisconnect(db.conn); rm(db.conn)
-# hotdry climate
-db.conn <- dbConnect(RSQLite::SQLite(), paste0("../project2ndStudy/projectTest_", landscapename,"/output/",landscapename, "_hotdry_disturbanceModulesEnabled.sqlite"))
-dist2 <- tbl(db.conn, "landscape_removed") %>% 
-  collect() %>% 
-  mutate(climate = "hotdry")
-dist.ls2 <- tbl(db.conn, "landscape") %>% 
-  collect() %>% 
-  mutate(climate = "hotdry")
-dist.ds2 <- tbl(db.conn, "dynamicstand") %>% 
-  collect() %>% 
-  mutate(climate = "hotdry")
-dbDisconnect(db.conn); rm(db.conn)
-dist <- bind_rows(dist1, dist2); rm(dist1, dist2)
-dist.ls <- bind_rows(dist.ls1, dist.ls2); rm(dist.ls1, dist.ls2)
-dist.ds <- bind_rows(dist.ds1, dist.ds2); rm(dist.ds1, dist.ds2)
-saveRDS(dist, paste0("results/datasets/dist_", landscapename, ".RDATA"))
-saveRDS(dist.ls, paste0("results/datasets/dist.ls_", landscapename, ".RDATA"))
-saveRDS(dist.ds, paste0("results/datasets/dist.ds_", landscapename, ".RDATA"))
-
 # mean basal area over time
-(mean_line <- ls %>% 
-    group_by(year, climate, rep, size, freq, fecundity, browsing) %>% 
+(mean_line <- ls.ls[[landscapename]] %>% 
+    group_by(year, climate, size, freq, fecundity, browsing, rep) %>% 
     summarise(n = sum(basal_area_m2)) %>% ungroup() %>% 
-    group_by(size, freq, climate, rep, year) %>% 
+    group_by(size, freq, climate, year) %>% 
     summarise(mean = mean(n)) %>% ungroup() %>% 
     mutate(dist=paste(size, freq), distRate = as.numeric(as.character(size)) * as.numeric(as.character(freq))))
 
 png(paste0("results/figures/landscapeWide_basalArea_overTime_", landscapename, ".png"), res=200,
     height=2000, width=4000)
-ls %>% 
-  mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
+ls.ls[[landscapename]] %>% 
+  mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing, ", rep:", rep)) %>% 
   group_by(groups, year, climate, rep, size, freq) %>% 
   summarise(n = sum(basal_area_m2)) %>% ungroup() %>% 
   ggplot(aes(x=year, y=n)) +
   geom_line(aes(group=groups), show.legend = F, alpha=0.6) +
   geom_line(data=mean_line, aes(y=mean, col=reorder(dist, distRate)), linewidth=2) +
-  geom_line(data =  dist.ls %>% group_by(year, climate) %>% summarise(n = sum(basal_area_m2)) %>% mutate(groups = "Disturbance modules"),
-            col="red", linetype = 2, linewidth=2) +
   facet_grid(~climate) +
   labs(x="Year", y="Mean basal area [m²/ha]", col="Size and frequency modification", 
-       title=paste0("How does process modfication impact basal area development in ", toupper(landscapename), "?\nDotted red line: simulation with disturbances simulated via modules instead of management\nColored lines: mean trajectory for the disturbance regime")) +
+       title=paste0("How does process modfication impact basal area development in ", toupper(landscapename), "?\nColored lines: mean trajectory for the disturbance regime")) +
   theme_bw()
 dev.off()
 
@@ -483,7 +477,7 @@ dev.off()
 ## stratified by disturbance
 png(paste0("results/figures/landscapeWide_finalBasalArea_disturbances_", landscapename, ".png"), res=200,
     height=1600, width=3400)
-ls %>% 
+ls.ls[[landscapename]] %>% 
   mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
   filter(year == 80) %>% 
   group_by(groups, climate, rep, size, freq, fecundity, browsing) %>% 
@@ -496,9 +490,7 @@ ls %>%
   ggplot(aes(x=reorder(level, disturbanceRate), y=n, col=regen)) +
   geom_point(size=4, col="black") +
   geom_point(size=3) +
-  # geom_hline(aes(yintercept=dist.ls %>% filter(year==80, climate=="baseline") %>% pull(basal_area_m2) %>% unique() %>% sum()),
-  #            linetype=3, linewidth=2) +
-  geom_hline(aes(yintercept = ls %>% filter(year==0) %>% pull(basal_area_m2) %>% unique() %>% sum()),
+  geom_hline(aes(yintercept = ls.ls[["bgd"]] %>% filter(year==0) %>% pull(basal_area_m2) %>% unique() %>% sum()),
              col="black") +
   facet_grid(~climate) +
   labs(x="Disturbance rate modification", y="Mean basal area in 2100 [m²/ha]",
@@ -511,7 +503,7 @@ dev.off()
 ## stratified by regeneration
 png(paste0("results/figures/landscapeWide_finalBasalArea_regeneration_", landscapename, ".png"), res=200,
     height=1600, width=3400)
-ls %>% 
+ls.ls[[landscapename]] %>% 
   mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
   filter(year == 80) %>% 
   group_by(groups, climate, rep, size, freq, fecundity, browsing) %>% 
@@ -524,14 +516,12 @@ ls %>%
   ggplot(aes(x=reorder(level, regen), y=n, col=dist)) +
   geom_point(size=4, col="black") +
   geom_point(size=3) +
-  geom_hline(aes(yintercept=dist.ls %>% filter(year==80, climate=="baseline") %>% pull(basal_area_m2) %>% unique() %>% sum()),
-             linetype=3, linewidth=2) +
-  geom_hline(aes(yintercept = ls %>% filter(year==0) %>% pull(basal_area_m2) %>% unique() %>% sum()),
+  geom_hline(aes(yintercept = ls.ls[["bgd"]] %>% filter(year==0) %>% pull(basal_area_m2) %>% unique() %>% sum()),
              col="black") +
   facet_grid(~climate) +
   labs(x="Disturbance rate modification", y="Mean basal area in 2100 [m²/ha]",
        col="Fecundity and browsing modification level",
-       title="Basal area in 2100: all 256 possible process modification combinations\nDotted line: value in 2100 with disturbance simulated via modules, baseline climate\nSolid line: value in 2020") +
+       title="Basal area in 2100: all 256 possible process modification combinations\nSolid line: value in 2020") +
   theme_bw() +
   theme(legend.position="bottom")
 dev.off()
@@ -539,7 +529,7 @@ dev.off()
 # regeneration processes: final basal area
 png(paste0("results/figures/landscapeWide_basalArea_regeneration_", landscapename, ".png"), res=200,
     height=2000, width=3000)
-ls %>% 
+ls.ls[[landscapename]] %>% 
   filter(year > 70) %>% # last simulation decade
   mutate(distRate = as.numeric(size)*as.numeric(freq), 
          groups = paste("fecundity:", fecundity, "\nbrowsing:", browsing)) %>% 
@@ -549,8 +539,6 @@ ls %>%
   ggplot() +
   geom_line(aes(x=as.numeric(as.character(browsing)), y=n, col=as.factor(as.numeric(as.character(fecundity)))),
             linewidth=2) +
-  geom_point(data =  dist.ls %>% filter(year > 70, climate=="baseline") %>% group_by(climate) %>% summarise(n = sum(basal_area_m2)/10),
-             aes(x=1, y=n), col="black", size=4, shape=8) +
   facet_grid(~climate) +
   labs(x="browsing modification", y="Mean basal area in last sim. decade [m²/ha]", col="Fecundity modification [%]", 
        title=paste0("Modified regeneration: impact on basal area in ", toupper(landscapename), "\nDisturbance rate kept constant at original value\nBlack star: disturbances simulated via modules instead of management")) +
@@ -559,18 +547,18 @@ dev.off()
 
 
 # dominant species
-mean_line.species <- ls %>% 
+mean_line.species <- ls.ls[[landscapename]] %>% 
   group_by(year, climate, rep, size, freq, fecundity, browsing) %>% 
   mutate(total = sum(basal_area_m2)) %>% 
   filter(species == common.species[[landscapename]][1]) %>% 
   summarise(n = basal_area_m2/total) %>% 
-  group_by(size, freq, climate, rep, year) %>% 
+  group_by(size, freq, climate, year) %>% 
   summarise(mean = mean(n)) %>% ungroup() %>% 
   mutate(dist=paste(size, freq), distRate = as.numeric(size) * as.numeric(freq)) 
 png(paste0("results/figures/landscapeWide_mostCommonSpecies_overTime_", landscapename, ".png"), res=200,
     height=2000, width=4000)
-ls %>% 
-  mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
+ls.ls[[landscapename]] %>% 
+  mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing, ", rep:", rep)) %>% 
   group_by(groups, year, climate, rep) %>% 
   mutate(total = sum(basal_area_m2)) %>% 
   filter(species == common.species[[landscapename]][1]) %>% 
@@ -578,11 +566,6 @@ ls %>%
   ggplot(aes(x=year, y=n*100)) +
   geom_line(aes(group=groups), show.legend = F, alpha=0.6) +
   geom_line(data=mean_line.species, aes(y=mean*100, col=reorder(dist, distRate)), linewidth=2) +
-  geom_line(data =  dist.ls %>% group_by(year, climate) %>% 
-              mutate(total = sum(basal_area_m2)) %>% 
-              filter(species == common.species[[landscapename]][1]) %>% 
-              mutate(n = basal_area_m2/total),
-            col="red", linetype = 2, linewidth=2) +
   facet_grid(~climate) +
   labs(x="Year", y=paste0("Proportion of ", common.species[[landscapename]][1], " [%, basal area]"), col="", 
        title=paste0("How does the most common species fare in ", toupper(landscapename), "?\nDotted red line: simulation with disturbances simulated via modules instead of management\nColored lines: mean trajectory for the disturbance regime")) +
@@ -602,7 +585,7 @@ label.df <- data.frame(year=15, basal_area_m2=0.25, label=c("Reference condition
                        climate="baseline")
 png(paste0("results/figures/landscapeWide_speciesComposition_relative_extremes_", landscapename, ".png"), res=200,
     height=2000, width=3000)
-ls %>% 
+ls.ls[[landscapename]] %>% 
   filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100", "baseline_rep1_size10_freq10_browsing10_fecundity10",
                            "hotdry_rep1_size1_freq1_browsing1_fecundity100", "hotdry_rep1_size10_freq10_browsing10_fecundity10")) %>% 
   mutate(species = ifelse(species %in% common.species[[landscapename]], species, "other"),
@@ -618,7 +601,7 @@ dev.off()
 # absolute
 png(paste0("results/figures/landscapeWide_speciesComposition_absolute_extremes_", landscapename, ".png"), res=200,
     height=2000, width=3000)
-ls %>% 
+ls.ls[[landscapename]] %>% 
   filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100", "baseline_rep1_size10_freq10_browsing10_fecundity10",
                            "hotdry_rep1_size1_freq1_browsing1_fecundity100", "hotdry_rep1_size10_freq10_browsing10_fecundity10")) %>% 
   mutate(species = ifelse(species %in% common.species[[landscapename]], species, "other"),
@@ -634,24 +617,22 @@ dev.off()
 ## trees killed output ####
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-mean_line.rem <- rem %>% 
+mean_line.rem <- rem.ls[[landscapename]] %>% 
   group_by(year, climate, rep, size, freq, fecundity, browsing) %>% 
   summarise(n = sum(basal_area_m2)) %>% 
-  group_by(size, freq, climate, rep, year) %>% 
+  group_by(size, freq, climate, year) %>% 
   summarise(mean = mean(n)) %>% ungroup() %>% 
   mutate(dist=paste(size, freq), distRate = as.numeric(size) * as.numeric(freq)) 
 
 png(paste0("results/figures/landscapeWide_treesKilled_", landscapename, ".png"), res=200,
     height=2000, width=3000)
-rem %>% 
+rem.ls[[landscapename]] %>% 
   mutate(groups = paste("size:", size, ", freq:", freq, ", fecundity:", fecundity, ", browsing:", browsing)) %>% 
   group_by(groups, year, climate, rep) %>% 
   summarise(n = sum(basal_area_m2)) %>% 
   ggplot(aes(x=year, y=n)) +
-  # geom_line(aes(group=groups), show.legend = F, alpha=0.6) +
+  geom_line(aes(group=groups), show.legend = F, alpha=0.6) +
   geom_line(data=mean_line.rem, aes(y=mean, col=reorder(dist, distRate)), linewidth=2) +
-  geom_line(data =  dist %>% filter(climate=="baseline") %>% group_by(year, climate) %>% summarise(n = sum(basal_area_m2)) %>% mutate(groups = "Disturbance modules"),
-            col="black", linewidth=2) +
   scale_y_log10() +
   facet_grid(~climate) +
   labs(x="Year", y="Basal area killed by disturbance [m²]", col="", 
@@ -659,38 +640,13 @@ rem %>%
   theme_bw()
 dev.off()
 
-rem %>% filter(climate=="baseline") %>% pull(basal_area_m2) %>% summary()
-rem %>% filter(climate=="hotdry") %>% pull(basal_area_m2) %>% summary()
-rem %>% group_by(climate) %>% summarise(sum_basal = sum(basal_area_m2))
+rem.ls[[landscapename]] %>% filter(climate=="baseline") %>% pull(basal_area_m2) %>% summary()
+rem.ls[[landscapename]] %>% filter(climate=="hotdry") %>% pull(basal_area_m2) %>% summary()
+rem.ls[[landscapename]] %>% group_by(climate) %>% summarise(sum_basal = sum(basal_area_m2))
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 ## patch output ####
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-ref.df <- read_csv("helper_files/ref.df.csv")
-
-# requirements for the management intervention to count as a disturbance patch:
-## needs to be forested (before_ba > 0, n_cells > 0)
-## trees need to have been killed (killed_ba > 0)
-
-i<-1; patch.df <- data.frame()
-for (i in 1:nrow(sims)) {
-  dbname <- paste0("../project2ndStudy/projectTest_", landscapename, "/output/patch_output/output_patches_",
-                   landscapename, "_", sims$climate[i], "_rep", sims$rep[i], "_size", sims$sizeMods[i],
-                   "_freq", sims$freqMods[i], "_browsing", sims$browsingMods[i], "_fecundity", sims$fecundityMods[i], ".csv")
-  if (file.exists(dbname)) {
-    patch.df <- bind_rows(patch.df, 
-                          read_delim(dbname) %>% 
-                            mutate(landscape=landscapename,
-                                   climate=sims$climate[i], rep=sims$rep[i], size=sims$sizeMods[i], freq=sims$freqMods[i], 
-                                   browsing=sims$browsingMods[i], fecundity=sims$fecundityMods[i],
-                                   n_cells = ifelse(killed_ba == 0, 0, n_cells)) %>% 
-                            filter(n_cells > 0)
-    )
-  }
-  #if (i%%16==0) print(paste0(round((i/nrow(sims)*100),1), " %: ", dbname))
-}; write_csv(patch.df, paste0("results/datasets/patch.df_", landscapename, ".csv"))
-
-patch.df %>% 
+ref.df <- read_csv("raw_data/helper_files/ref.df.csv")
+patch.ls[[landscapename]] %>% 
   group_by(landscape, climate, rep, size, freq, browsing, fecundity, agent) %>% 
   summarise(size_actual = mean(n_cells), 
             events_actual = n()) %>% 
@@ -699,92 +655,11 @@ patch.df %>%
          events_expected = events_expected * mean(as.numeric(freq)),
          area_expected = size_expected * events_expected/100,
          area_actual = size_actual * events_actual/100,
-         area_diff = (area_actual-area_expected)/area_expected) %>% 
-  summary()
+         area_diff = (area_actual-area_expected)/area_expected) %>% #summary()
+  ggplot() + geom_histogram(aes(x=area_diff)) + theme_bw()
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # DISCARDED ####
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-# landscapename <- "grte"
-# # mean simulated patch size per agent from 2021-2100 under reference climate
-# patch.lib <- readRDS(paste0("../prep/data/patch.lib_", landscapename,".RDATA"))
-# (agent.mean <- patch.lib[["baseline_wet_warm"]] %>% # all patches under reference climate for that landscape
-#   filter(year < 81, # only patches from 2021-2100
-#          genesis == "simulated") %>% 
-#   distinct() %>% 
-#   group_by(agent) %>% 
-#   summarise(mean_size=mean(size), # mean patch size per agent between 2021-2100
-#             events = round(sum(n())/20)) %>% ungroup() %>% # mean total number of events per agent between 2021-2100
-#   mutate(landscape = landscapename,
-#          events = ifelse(agent == "bite", events/20, events),
-#          mean_size = ifelse(agent == "bite", mean_size*20, mean_size)))
-# rm(patch.lib)
-# 
-# ref.df <- data.frame()
-# ref.df <- bind_rows(ref.df, agent.mean)
-# ref.df <- ref.df %>% rename(size_expected = mean_size, events_expected=events)
-# write_csv(ref.df, "helper_files/ref.df.csv")
-
-# # maps for different runs
-# basal.rast.df <- ds.ls[["basal"]] %>% 
-#   filter(year==80,
-#          identifier %in% c("baseline_rep1_size10_freq10_browsing10_fecundity10",
-#                            "baseline_rep1_size1_freq1_browsing1_fecundity10",
-#                            "baseline_rep1_size1_freq1_browsing10_fecundity100",
-#                            "baseline_rep1_size1_freq10_browsing1_fecundity100",
-#                            "baseline_rep1_size10_freq1_browsing1_fecundity100")) %>% 
-#   mutate(year = paste("year", year, sep=""))
-# basal.rast.ls <- base::split(basal.rast.df, list(basal.rast.df$identifier, basal.rast.df$year), sep="; ")
-# 
-# toRast.fc <- function(x) {
-#   x %>% full_join(rid.df[rid.df$landscape=="bgd",]) %>% 
-#     dplyr::select(x,y,basal_diff) %>% 
-#     rast() 
-# }
-# 
-# interim<-lapply(basal.rast.ls, toRast.fc); names(interim) <- names(basal.rast.ls)
-# basal.rast <- rast()
-# for (i in 1:length(interim)) basal.rast <- c(basal.rast, unlist(interim[[i]]))
-# names(basal.rast) <- names(basal.rast.ls); rm(interim)
-# 
-# png(paste0("results/figures/map_basal80diff_baseline_", landscapename ,".png"), res=200,
-#     height=1000, width=2000)
-# basal.rast %>% plot(range=c(-1,0))
-# dev.off()
-
-# # investigation STOKO
-# db.conn <- dbConnect(RSQLite::SQLite(), paste0("../project2ndStudy/projectTest_stoko/database/stoko_change_dry_hot.sqlite"))
-# clim.df <- data.frame(); tables <- dbListTables(db.conn)
-# for (i in 1:length(tables)) {
-#   clim.df <- bind_rows(clim.df, tbl(db.conn, tables[i]) %>% 
-#     filter(year > 2020) %>% 
-#     group_by(year, month) %>% 
-#     summarise(prec=mean(prec), min_temp=mean(min_temp), max_temp=mean(max_temp), rad=mean(rad), vpd=mean(vpd)) %>%
-#     mutate(mean_temp=(max_temp+min_temp)/2) %>% 
-#     collect() %>% 
-#     mutate(table=tables[i]))
-#   print(i)
-# }
-# dbDisconnect(db.conn); rm(db.conn)
-# 
-# 
-# 
-# clim.df %>% 
-#   mutate(season = ifelse(month %in% 3:5, "1_spring",
-#                                  ifelse(month %in% 6:8, "2_summer", 
-#                                         ifelse(month %in% 9:11, "3_autumn", "4_winter")))) %>% 
-#   group_by(year, season) %>% 
-#   summarise(prec=mean(prec), min_temp=mean(min_temp), max_temp=mean(max_temp), 
-#             mean_temp=mean(mean_temp), rad=mean(rad), vpd=mean(vpd)) %>% 
-#   ungroup() %>% 
-#   mutate(year = year-2020) %>% 
-#   pivot_longer(cols=prec:vpd) %>% 
-#   ggplot(aes(x=year, y=value, col=season)) +
-#   geom_line(linewidth=2) +
-#   geom_vline(aes(xintercept=31)) +
-#   facet_grid(season~name) +
-#   labs(y="Temperature in °C or precipitation in mm", x="Year",
-#        title="Mean daily climate variables over all 475 climate clusters in Shiretoko") +
-#   theme_bw()

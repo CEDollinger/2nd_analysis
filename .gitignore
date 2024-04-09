@@ -1,5 +1,5 @@
 results/
-helper_files/
+raw_data/
 *.Rproj.user
 *.html
 *.Rhistory
