@@ -1,5 +1,6 @@
 results/
 raw_data/
+old_markdowns/
 *.Rproj.user
 *.html
 *.Rhistory

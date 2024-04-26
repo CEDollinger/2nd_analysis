@@ -3,9 +3,11 @@ title: "Preliminary analysis for the 2nd study"
 author: "CDollinger"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  bookdown::html_document2:
+  html_document:
     toc: true
-    toc_depth: 2
+    toc_depth: 3
+    toc_float: true
+    theme: yeti
 knit: (
   function(inputFile, encoding) { 
   
@@ -20,25 +22,21 @@ knit: (
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)); getwd() # set wd to file location
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path)); getwd() # set wd to file location
 ```
 
-> I implemented all the changes we talked about in our last meeting:
-> 
-> * Instead of manipulating *sapStressThreshold* we now manipulate height growth (simulated via the browsing module, same browsing probability for all species)
-> * New modification levels: size x c(1,2,5,10), frequency x c(1,2,5,10), fecundity x c(1,1/2,1/5,1/10), browsing pressure x c(1,2,5,10)
-> * New output: dynamic stand in year 2020, 2050 and 2100
-> * Severity for all agents set to 90 % (and 100 for sapling during fire)
-> * Fire can only burn cells with a fuel load > 500 kg/ha
-> 
-> I then ran a complete suite of simulations for Berchtesgaden (4 patch size levels * 4 disturbance frequency levels * 4 fecundity levels * 4 browsing levels * 2 climate scenarios * 1 rep = 512 runs)
-> 
-> For Shiretoko I ran the 32 "most interesting runs" (least and most extreme process modification levels, baseline and hot-dry climate)
+> Here are the results for the complete set of runs (3 landscapes x 2560 scenarios)!
+
+> Framing: reorganization concept
 >
-> Here are the results!
+> Might be confusing in regards to the first reorganization study across landscapes since GRTE was the most resilient there and here is the least resilient. 
+>
+> Reason: different definition of resilience, not based on rRV here
+> 
 
 
-# Preliminary results for Berchtesgaden (29.02.2024)
+
+# Results for Berchtesgaden (19.04.2024)
 
 ## System breaking indicators
 
@@ -50,12 +48,12 @@ Short recap of our indicators:
 
 3. Remaining forest: stem density dropped below 50 trees/ha
 
-*Reference*: value under reference conditions (no process modification + baseline climate), calculated for each RU and each year
+*Reference*: value under reference conditions (no process modification + baseline climate, rep 1), calculated for each RU and each year
 
 
 ### Indicators over time
 
-![](results/figures/lineplot_overtime_bgd_notbroken - Kopie.png)
+![](results/figures/diagnostics/lineplot_overtime_bgd.png)
 
 >
 > Structure changes very quickly until mid of century, then recovers under hot-dry climate, and continues to change under baseline climate, lowest value ~15%
@@ -70,7 +68,7 @@ Short recap of our indicators:
 
 Values in year 2100
 
-![](results/figures/lineplot_basal80_bgd.png)
+![](results/figures/diagnostics/lineplot_basal80_bgd.png)
 
 >  
 > All processes play a role in structural change, disturbance processes (first row) however seem to have a bigger impact (relatively little change at modification level 1)
@@ -83,7 +81,7 @@ Values in year 2100
 
 Values in year 2100
 
-![](results/figures/lineplot_dom80_bgd.png)
+![](results/figures/diagnostics/lineplot_dom80_bgd.png)
 
 >  
 > Mainly the disturbance processes (first row) seem to have an impact on compositional change (relatively little change at modification level 1) - especially under modification level 10
@@ -96,7 +94,7 @@ Values in year 2100
 
 Values in year 2100
 
-![](results/figures/lineplot_forest80_bgd.png)
+![](results/figures/diagnostics/lineplot_forest80_bgd.png)
 
 >  
 > Basically only regeneration processes (second row) seem to have an impact on forest loss (relatively little change at modification level 1)
@@ -105,30 +103,35 @@ Values in year 2100
 > 
 
 
+
 ## Spatial patterns
 
+### Single indicators
 
-1. Structure: highest probability of change in higher elevations (left: baseline climate, right: hot-dry climate)
+![](results/figures/diagnostics/map_singleIndicators_bgd.png)
 
+1. Composition: highest probability of change in higher elevations (above: baseline climate, below: hot-dry climate)
 
-![](results/figures/map_prop_basal80_baseline_bgd.png){width=49%}
-![](results/figures/map_prop_basal80_hotdry_bgd.png){width=49%}
-
-
-
-2. Composition: diffuse pattern
-
-
-![](results/figures/map_prop_dom80_baseline_bgd.png){width=49%}
-![](results/figures/map_prop_dom80_hotdry_bgd.png){width=49%}
-
-
+2. Structure: highest probability of change at tree line, under baseline also in lower elevations 
 
 3. Forest loss: highest probability of change at tree line
 
 
-![](results/figures/map_prop_forest80_baseline_bgd.png){width=49%}
-![](results/figures/map_prop_forest80_hotdry_bgd.png){width=49%}
+### Reorganization
+
+* Resilience: no structural or compositional change, no regime shift
+
+* Reassembly: compositional change, no structural change or regime shift
+
+* Restructuring: structural change, no compositional change or regime shift
+
+* Replacement: structural change and compositional change, no regime shift
+
+* Regime shift: regime shift
+
+![](results/figures/diagnostics/map_reorganization_bgd.png)
+
+Overall very little loss of resilience, most activity around tree line. Bit more replacement under hot-dry climate.
 
 
 ## Landscape wide changes
@@ -136,59 +139,55 @@ Values in year 2100
 ### Mean basal area 
 
 
-* Basal area varied across the simulation period and runs (Dotted red line: simulation with disturbances simulated via modules instead of management):
+* Basal area varied across the simulation period and runs:
 
 
-![](results/figures/landscapeWide_basalArea_overTime_bgd.png)
+![](results/figures/diagnostics/landscapeWide_basalArea_overTime_bgd.png)
 
 
 * Basal area only consistently dropped below the 2020-value in 2100 once the disturbance rate was increased by more than 25. Under hot-dry conditions it even took a disturbance rate increase of x100:
 
 
-![](results/figures/landscapeWide_finalBasalArea_disturbances_bgd.png)
+![](results/figures/diagnostics/landscapeWide_finalBasalArea_disturbances_bgd.png)
 
 
 ### Species composition
 
 
- * Species composition remained relatively stable under reference conditions (= no process modification, first row) and differences between the climate scenarios were small. (Interesting! I would have expected spruce to decrease due to higher temperatures under hot-dry but it still seems to do fairly well without climate change-mediated disturbance change)
+* Species composition remained relatively stable under reference conditions (= no process modification, first row) and differences between the climate scenarios were small. (Interesting! I would have expected spruce to decrease due to higher temperatures under hot-dry but it still seems to do fairly well without climate change-mediated disturbance change)
 
 
-* Under the most extreme scenario (size * 10 + frequency * 10 + fecundity/10 + browsing * 10, second row) spruce decreased while all other species increased - especially larch (makes sense, it should be able to do very well in all those disturbance patches). Fir also benefited from the increase in disturbances:
+* Under the most extreme scenario (size * 10 and frequency * 10 and fecundity/10 and browsing * 10, second row) spruce decreased while all other species increased - especially larch (makes sense, it should be able to do very well in all those disturbance patches). Fir also benefited from the increase in disturbances:
 
 
-![](results/figures/landscapeWide_speciesComposition_relative_extremes_bgd.png)
+![](results/figures/diagnostics/landscapeWide_speciesComposition_relative_extremes_bgd.png)
 
 
 * Absolute basal area decreased strongly under the extreme scenario:
 
 
-![](results/figures/landscapeWide_speciesComposition_absolute_extremes_bgd.png)
+![](results/figures/diagnostics/landscapeWide_speciesComposition_absolute_extremes_bgd.png)
 
 
-* Closer look at spruce: its proportion really remains fairly stable under hot-dry climate as long as the disturbance regime doesn't change much from reference conditions (Dotted red line: simulation with disturbances simulated via modules instead of management)
+* Closer look at spruce: its proportion really remains fairly stable under hot-dry climate as long as the disturbance regime doesn't change much from reference conditions 
 
 
-![](results/figures/landscapeWide_mostCommonSpecies_overTime_bgd.png)
+![](results/figures/diagnostics/landscapeWide_mostCommonSpecies_overTime_bgd.png)
 
 
 
 ### Basal area killed
 
 
-* The disturbance modules (bark beetle + wind; black line in baseline facet) killed more basal area than our reference disturbance regime (maybe because our assumed severity of 90% of susceptible trees is too low as wind events usually have higher severities?):
+* Basal area killed was very similar between the climate scenarios:
+
+(y-axis log10-transformed)
+![](results/figures/diagnostics/landscapeWide_treesKilled_bgd.png)
 
 
-![](results/figures/landscapeWide_treesKilled_bgd.png)
 
 
-* Basal area killed was very similar between the climate scenarios. 
-
-
-![](results/figures/landscapeWide_treesKilled_bgd_comparison.png)
-
-
-# Preliminary results for Shiretoko (06.03.2024)
+# Results for Shiretoko (19.04.2024)
 
 ## System breaking indicators
 
@@ -205,7 +204,7 @@ Short recap of our indicators:
 
 ### Indicators over time
 
-![](results/figures/lineplot_overtime_stoko.png)
+![](results/figures/diagnostics/lineplot_overtime_stoko.png)
 
 >
 > Structure barely changes under hot-dry conditions, under baseline climate it changes strongly in the later half of the century, lowest value ~80%
@@ -220,7 +219,7 @@ Short recap of our indicators:
 
 Values in year 2100
 
-![](results/figures/lineplot_basal80_stoko.png)
+![](results/figures/diagnostics/lineplot_basal80_stoko.png)
 
 >  
 > Basically only regneration processes (second row) seem to have an impact on structural change, especially browsing (relatively little change at modification level 1)
@@ -233,7 +232,7 @@ Values in year 2100
 
 Values in year 2100
 
-![](results/figures/lineplot_dom80_stoko.png)
+![](results/figures/diagnostics/lineplot_dom80_stoko.png)
 
 >  
 > Mainly climatic processes (colors) seem to have an impact on compositional change
@@ -246,7 +245,7 @@ Values in year 2100
 
 Values in year 2100
 
-![](results/figures/lineplot_forest80_stoko.png)
+![](results/figures/diagnostics/lineplot_forest80_stoko.png)
 
 >  
 > Basically only regeneration processes (second row) seem to have an impact on forest loss (relatively little change at modification level 1) - especially browsing
@@ -257,28 +256,25 @@ Values in year 2100
 
 ## Spatial patterns
 
+### Single indicators
 
-1. Structure: highest probability of change in higher elevations (left: baseline climate, right: hot-dry climate)
+![](results/figures/diagnostics/map_singleIndicators_stoko.png)
 
+1. Composition:  generally more change at tree line and in certain elevation bands (above: baseline climate, below: hot-dry climate)
 
-![](results/figures/map_prop_basal80_baseline_stoko.png){width=49%}
-![](results/figures/map_prop_basal80_hotdry_stoko.png){width=49%}
-
-
-
-2. Composition: diffuse pattern, generally more change at tree line
-
-
-![](results/figures/map_prop_dom80_baseline_stoko.png){width=49%}
-![](results/figures/map_prop_dom80_hotdry_stoko.png){width=49%}
-
-
+2. Structure: highest probability of change in higher elevations
 
 3. Forest loss: highest probability of change at tree line
 
 
-![](results/figures/map_prop_forest80_baseline_stoko.png){width=49%}
-![](results/figures/map_prop_forest80_hotdry_stoko.png){width=49%}
+### Reorganization
+
+* Baseline: Restructuring in higher elevations and replacement at tree line. Diffuse reassembly in lower elevations
+
+* Hot-dry: Replacement at tree line, reassembly across elevational gradient
+
+![](results/figures/diagnostics/map_reorganization_stoko.png)
+
 
 
 ## Landscape wide changes
@@ -286,65 +282,55 @@ Values in year 2100
 ### Mean basal area 
 
 
-* Basal area varied slightly across the simulation period and runs and differed strongly between baseline and hot-dry climate (Dotted red line: simulation with disturbances simulated via modules instead of management):
+* Basal area differed strongly between baseline and hot-dry climate. Disturbance modification (colored lines) did not have an impact:
 
 
-![](results/figures/landscapeWide_basalArea_overTime_stoko.png)
+![](results/figures/diagnostics/landscapeWide_basalArea_overTime_stoko.png)
 
 
-* For baseline climate basal area only consistently dropped below the 2020-value in 2100 once regeneration was severely impeded. Under hot-dry conditions final basal area consistently surpassed the 2020-value:
+* For baseline climate, basal area only consistently dropped below the 2020-value in 2100 once regeneration was severely impeded. Under hot-dry conditions final basal area consistently surpassed the 2020-value:
 
 
-![](results/figures/landscapeWide_finalBasalArea_regeneration_stoko.png)
+![](results/figures/diagnostics/landscapeWide_finalBasalArea_regeneration_stoko.png)
 
 
 ### Species composition
 
 
- * Species composition remained relatively stable under reference conditions (= no process modification, first row). Differences between the climate scenarios started showing in the later half of the century.
+* Species composition remained relatively stable under reference conditions (= no process modification, first row). Differences between the climate scenarios started showing in the later half of the century.
 
 
-* Under hot-dry conditions *Betula ermanii* decreased most strongly while *Alnus ssp.* increased in turn. Differences between the process modification scenarios were small:
+* Under hot-dry conditions *Betula ermanii* decreased most strongly as *Alnus ssp.* increased. Differences between the process modification scenarios were small:
 
 
-![](results/figures/landscapeWide_speciesComposition_relative_extremes_stoko.png)
+![](results/figures/diagnostics/landscapeWide_speciesComposition_relative_extremes_stoko.png)
 
 
 * Absolute basal area increased strongly under hot-dry conditions in the first half of the century, but leveled off under the extreme process modification scenario:
 
 
-![](results/figures/landscapeWide_speciesComposition_absolute_extremes_stoko.png)
+![](results/figures/diagnostics/landscapeWide_speciesComposition_absolute_extremes_stoko.png)
 
 
-* Closer look at *Betula ermanii*: its proportion really remains fairly stable under baseline and decreased strongly under hot-dry climate. Modifications of the disturbance regime had very little impact on its abundance (Dotted red line: simulation with disturbances simulated via modules instead of management)
+* Closer look at *Betula ermanii*: its proportion remained fairly stable under baseline and decreased strongly under hot-dry climate. Modifications of the disturbance regime had very little to no impact on its abundance: 
 
 
-![](results/figures/landscapeWide_mostCommonSpecies_overTime_stoko.png)
+![](results/figures/diagnostics/landscapeWide_mostCommonSpecies_overTime_stoko.png)
 
 
 
 ### Basal area killed
 
 
-* The wind module (black line in baseline facet) killed about the same amount of basal area as our reference disturbance regime:
+* Basal area killed was higher under hot-dry climate. Under hot-dry climate it also increased over time (more trees on the landscape -> more trees to kill): 
+
+(y-axis log10-transformed)
+![](results/figures/diagnostics/landscapeWide_treesKilled_stoko.png)
 
 
-![](results/figures/landscapeWide_treesKilled_stoko.png)
 
 
-* Basal area killed was higher under hot-dry climate: 
-
-
-![](results/figures/landscapeWide_treesKilled_stoko_comparison.png)
-
-# Preliminary results for Grand Teton (05.03.2024)
-
-> 
-> The size * 10 + freq * 10 runs can't be trusted! 
-> 
-> iLand simulated disturbances only until simulation year 47. I don't know why yet.
-> 
-
+# Results for Grand Teton (19.04.2024)
 
 ## System breaking indicators
 
@@ -361,14 +347,14 @@ Short recap of our indicators:
 
 ### Indicators over time
 
-![](results/figures/lineplot_overtime_grte.png)
+![](results/figures/diagnostics/lineplot_overtime_grte.png)
 
 >
-> Structure changes very quickly for the disturbance modification scenarios, for the baseline disturbance scenarios it decreases linearly and quicker for hot-dry climate, lowest value ~0%
+> Structure changes very quickly under hot-dry climate, lowest value 0%
 >
-> Composition decreases more in the first half of the centuy and then stays relatively stable, more change under baseline climate, lowest value ~60%
+> Composition changes more in the first half of the centuy and then stays relatively stable, more change under baseline climate, lowest value ~55%
 >
-> Basically all forest lost by end of century for the disturbance modification scenarios, under baseline disturbances slow decrease, higher under hot-dry climate, lowest value ~1 %
+> Basically all forest lost by end of century for the extreme modification scenarios, quicker under hot-dry climate, lowest value 2 %
 >
 
 
@@ -376,12 +362,12 @@ Short recap of our indicators:
 
 Values in year 2100
 
-![](results/figures/lineplot_basal80_grte.png)
+![](results/figures/diagnostics/lineplot_basal80_grte.png)
 
 >  
 >  Size and frequency both heavily impact structural change. Fecundity seems to have a lesser impact on structural change than browsing
 > 
-> Generally more structural change under hot-dry climate
+> Little influence of climate
 > 
 
 
@@ -389,12 +375,12 @@ Values in year 2100
 
 Values in year 2100
 
-![](results/figures/lineplot_dom80_grte.png)
+![](results/figures/diagnostics/lineplot_dom80_grte.png)
 
 >  
 > Disturbance processes (first row) have a stronger impact on compositional change than regeneration processes. Pattern somewhat unclear, sometimes "recovery" of compositional indicator?
 > 
-> Compositional change much higher under hot-dry climate
+> More compositional change under baseline climate
 > 
 
 
@@ -402,10 +388,10 @@ Values in year 2100
 
 Values in year 2100
 
-![](results/figures/lineplot_forest80_grte.png)
+![](results/figures/diagnostics/lineplot_forest80_grte.png)
 
 >  
-> All processes (disturbance, regeneration, climate) seem to have an impact on forest loss but especially disturbance size and frequency
+> Mainly disturbance processes seem to have an impact on forest loss but especially disturbance size and frequency
 > 
 > Generally more forest loss under hot-dry climate
 > 
@@ -413,28 +399,23 @@ Values in year 2100
 
 ## Spatial patterns
 
+### Single indicators
 
-1. Structure: high probability of change pretty much everywhere, especially under hot-dry climate (left)
+![](results/figures/diagnostics/map_singleIndicators_grte.png)
 
+1. Composition: higher probability of change in lower elevations 
 
-![](results/figures/map_prop_basal80_baseline_grte.png){width=49%}
-![](results/figures/map_prop_basal80_hotdry_grte.png){width=49%}
-
-
-
-2. Composition: higher probability of change in lower elevations
-
-
-![](results/figures/map_prop_dom80_baseline_grte.png){width=49%}
-![](results/figures/map_prop_dom80_hotdry_grte.png){width=49%}
-
-
+2. Structure: high probability of change pretty much everywhere
 
 3. Forest loss: high probability of change basically everywhere
 
 
-![](results/figures/map_prop_forest80_baseline_grte.png){width=49%}
-![](results/figures/map_prop_forest80_hotdry_grte.png){width=49%}
+
+### Reorganization
+
+* Replacement basically everywhere. Higher elevations more resilient against reassembly (only restructuring)
+
+![](results/figures/diagnostics/map_reorganization_grte.png)
 
 
 ## Landscape wide changes
@@ -442,59 +423,70 @@ Values in year 2100
 ### Mean basal area 
 
 
-* Basal area varied strongly across different disturbance modification scenarios but only differed slightly between baseline and hot-dry climate (Dotted red line: simulation with disturbances simulated via modules instead of management):
+* Basal area varied strongly across different disturbance modification scenarios but only differed slightly between baseline and hot-dry climate:
 
 
-![](results/figures/landscapeWide_basalArea_overTime_grte.png)
+![](results/figures/diagnostics/landscapeWide_basalArea_overTime_grte.png)
 
 
-* Basal area consistently dropped below the 2020-value in 2100. Basal area drops super low under the disturbance modification scenarios:
+* Basal area consistently dropped below the 2020-value in 2100. Basal area drops super low under the disturbance modification scenarios - basically 0 once disturbance rate is increased by more than factor 5:
 
 
-![](results/figures/landscapeWide_finalBasalArea_disturbances_grte.png)
+![](results/figures/diagnostics/landscapeWide_finalBasalArea_disturbances_grte.png)
 
 
 ### Species composition
 
 
- * Species composition remained relatively stable under reference conditions (= no process modification, first row). Differences between the climate scenarios were small but added up over the simulation period.
+* Species composition remained relatively stable under reference conditions (= no process modification, first row). Differences between the climate scenarios were small but added up over the simulation period.
 
 
-* Under the extreme process modification scenario *Populus tremula* and *Pseudotsuga menziensii glauca* increased at the detriment of *Pinus contorta*:
+* Under the extreme process modification scenario *Populus tremula* and *Pseudotsuga menziensii glauca* increased to the detriment of *Pinus contorta*:
 
 
-![](results/figures/landscapeWide_speciesComposition_relative_extremes_grte.png)
+![](results/figures/diagnostics/landscapeWide_speciesComposition_relative_extremes_grte.png)
 
 
 * Absolute basal area dropped to nearly zero under the extreme process modification scenarios:
 
 
-![](results/figures/landscapeWide_speciesComposition_absolute_extremes_grte.png)
+![](results/figures/diagnostics/landscapeWide_speciesComposition_absolute_extremes_grte.png)
 
 
-* Closer look at *Pinus contorta*, the originally dominant species: its proportion really remains fairly stable under baseline and hot-dry climate. Different disturbance modification scenarios had different impacts on its abundance (Dotted red line: simulation with disturbances simulated via modules instead of management)
+* Closer look at *Pinus contorta*, the originally dominant species: its proportion really remains fairly stable under baseline and hot-dry climate. Different disturbance modification scenarios had different impacts on its abundance. Once disturbance rate was increased by more than a factor of 10, it started to decrease: 
 
 
-![](results/figures/landscapeWide_mostCommonSpecies_overTime_grte.png)
+![](results/figures/diagnostics/landscapeWide_mostCommonSpecies_overTime_grte.png)
 
 
 
 ### Basal area killed
 
 
-* The bite and fire modules (black line in baseline facet) killed about the same amount of basal area as our reference disturbance regime. Basal area killed decreased under the disturbance modification scenarios as less were available for killing:
+* Basal area killed decreased under the disturbance modification scenarios as less trees were available for killing. Basically no differences between baseline and hot-dry climate:
 
-
-![](results/figures/landscapeWide_treesKilled_grte.png)
-
-
-* Basal area killed was very similar under baseline and hot-dry climate: 
-
-
-![](results/figures/landscapeWide_treesKilled_grte_comparison.png)
+(y-axis log10-transformed)
+![](results/figures/diagnostics/landscapeWide_treesKilled_grte.png)
 
 
 \~ the end (for now...) \~
+
+
+
+
+
+# Old updates
+
+## 27.03.2024
+> I implemented all the changes we talked about in our last meeting:
+> 
+> * Instead of manipulating *sapStressThreshold* we now manipulate height growth (simulated via the browsing module, same browsing probability for all species)
+> * New modification levels: size x c(1,2,5,10), frequency x c(1,2,5,10), fecundity x c(1,1/2,1/5,1/10), browsing pressure x c(1,2,5,10)
+> * New output: dynamic stand in year 2020, 2050 and 2100
+> * Severity for all agents set to 90 % (and 100 for sapling during fire)
+> * Fire can only burn cells with a fuel load > 500 kg/ha
+> 
+
 
 
 
