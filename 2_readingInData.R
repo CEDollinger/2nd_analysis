@@ -107,13 +107,17 @@ for (landscape_i in 1:3) {
       
       # prop of dominant species changed
       ds.dom.i <- ds.i %>%
-        group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-        filter(basal_area_m2 == max(basal_area_m2)) %>% ungroup() %>% # species with max basal area in 2020, 2050, 2100
+        group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>% 
+        mutate(rel_count=count_ha/sum(count_ha), rel_basal=basal_area_m2/sum(basal_area_m2),
+               iv = rel_count+rel_basal) %>% 
+        filter(iv == max(iv)) %>% ungroup() %>% # species with max IV in 2020, 2050, 2100
         rename(dom_c = species) %>%
         dplyr::select(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, dom_c, year) %>%
         inner_join(ds.ref %>%
                      group_by(rid, rep, climate, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-                     filter(basal_area_m2 == max(basal_area_m2)) %>% # species with max basal area in 2020, 2050, 2100 under reference conditions
+                     mutate(rel_count=count_ha/sum(count_ha), rel_basal=basal_area_m2/sum(basal_area_m2),
+                            iv = rel_count+rel_basal) %>% 
+                     filter(iv == max(iv)) %>% # species with max IV in 2020, 2050, 2100 under reference conditions
                      ungroup() %>% rename(dom_ref = species) %>%
                      dplyr::select(rid, dom_ref, year) %>% 
                      # chose most common dominant species by majority vote

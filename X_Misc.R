@@ -20,9 +20,18 @@ bind_rows(ls.bgd, ls.stoko, ls.grte) %>%
             density = sum(count_ha),
             basal = sum(basal_area_m2)) %>% ungroup() %>% 
   group_by(landscape) %>% 
+  mutate(count.previous = lag(density),
+         zuwachs = density - count.previous) %>% 
+  filter(year>0) %>% 
+  # ggplot(aes(x=year, y=zuwachs)) +
+  # geom_line() +
+  # facet_grid(~landscape) +
+  # theme_bw()
   summarise(regen_mean = round(mean(regen)),
             density_mean = round(mean(density)),
-            basal_mean = round(mean(basal))) 
+            basal_mean = round(mean(basal)),
+            zuwachs_sd = round(sd(zuwachs)),
+            zuwachs_mean = round(mean(zuwachs))) 
 
 bind_rows(ls.bgd, ls.stoko, ls.grte) %>% 
   filter(species %ni% c("pice", "weer", "pimu")) %>% # filter shrub species

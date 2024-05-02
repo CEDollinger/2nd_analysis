@@ -3,13 +3,10 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
-## Pie chart matrix ####
+## Matrix: pies or pixels ####
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 
-# disturbance processes
-png("results/figures/Q1_pie_disturbance_x.png", res=200,
-    height = 1500, width = 2000)
-bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+pie.dist.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(climate=="baseline", year==80) %>% 
   mutate(across(10:12, ~ abs(.x-1)*100)) %>%  # transform to % landscape changed
   group_by(size, freq) %>% 
@@ -21,23 +18,9 @@ bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>
   pivot_longer(3:5) %>% 
   mutate(size = paste0("Size * ", size), freq = paste0("Frequency * ", freq),
          size = factor(size, levels=c(paste0("Size * ", c(1, 2, 5, 10)))),
-         freq = factor(freq, levels=c(paste0("Frequency * ", c(1, 2, 5, 10))))) %>% 
-  ggplot(aes(x=0, y=value, fill=name)) +
-  geom_bar(stat="identity") +
-  facet_grid(rows=vars(size), cols=vars(freq), as.table = F, switch = "both") +
-  coord_polar("x") + # "y": pie chart but all same size, "x": weird drop pattern chart, but different sizes
-  labs(fill="Response", x="", y="", title="Breaking the system: disturbance processes") +
-  theme_bw() +
-  theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
-        axis.text.x=element_blank(), axis.text.y=element_blank(),
-        legend.position = "top") 
-dev.off()
+         freq = factor(freq, levels=c(paste0("Frequency * ", c(1, 2, 5, 10)))))
 
-
-# regeneration processes
-png("results/figures/Q1_pie_regeneration_y.png", res=200,
-    height = 1500, width = 2000)
-bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+pie.regen.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(climate=="baseline", year==80) %>% 
   mutate(across(10:12, ~ abs(.x-1)*100)) %>%  # transform to % landscape changed
   group_by(fecundity, browsing) %>% 
@@ -49,20 +32,108 @@ bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>
   pivot_longer(3:5) %>%
   mutate(fecundity = paste0("Fecundity * ", fecundity, "%"), browsing = paste0("Browsing * ", browsing),
          fecundity = factor(fecundity, levels=c(paste0("Fecundity * ", c(100, 50, 20, 10), "%"))),
-         browsing = factor(browsing, levels=c(paste0("Browsing * ", c(1, 2, 5, 10))))) %>% 
-  ggplot(aes(x=0, y=value, fill=name)) +
-  geom_bar(stat="identity") +
-  facet_grid(rows=vars(fecundity), cols=vars(browsing), as.table = F, switch = "both") +
-  coord_polar("y") + 
-  labs(fill="Response", x="", y="", title="Breaking the system: regeneration processes") +
-  theme_bw() +
-  theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
-        axis.text.x=element_blank(), axis.text.y=element_blank(),
-        legend.position = "top") 
+         browsing = factor(browsing, levels=c(paste0("Browsing * ", c(1, 2, 5, 10)))))
+
+### Pies #####
+# disturbance processes
+pie.dist.fc <- function(var) {
+  pie.dist.df %>% 
+    filter(name == var) %>%
+    ggplot(aes(x=0, y=value, fill=name)) +
+    geom_bar(stat="identity") +
+    facet_grid(rows=vars(size), cols=vars(freq), as.table = F, switch = "both") +
+    coord_polar("x") + # "y": pie chart but all same size, "x": weird drop pattern chart, but different sizes
+    labs(fill="", x="", y="") +
+    ylim(0,1) + # max value: 0.55
+    scale_fill_manual(values=response.colors) +
+    theme_bw() +
+    theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
+          axis.text.x=element_blank(), axis.text.y=element_blank(),
+          legend.position = "top") 
+}; pie.dist.ls <- lapply(names(response.colors), pie.dist.fc)
+
+png("results/figures/Q1_pie_disturbance.png", res=200,
+    height = 1000, width = 2500)
+print(
+  ggpubr::ggarrange(pie.dist.ls[[1]], pie.dist.ls[[2]], pie.dist.ls[[3]], nrow=1) %>% 
+    annotate_figure()
+); rm(pie.dist.fc, pie.dist.ls)
+
 dev.off()
 
 
-## line plots ####
+# regeneration processes
+
+pie.regen.fc <- function(var) {
+  pie.regen.df %>% 
+    filter(name == var) %>%
+    ggplot(aes(x=0, y=value, fill=name)) +
+    geom_bar(stat="identity") +
+    facet_grid(rows=vars(fecundity), cols=vars(browsing), as.table = F, switch = "both") +
+    coord_polar("x") + 
+    labs(fill="", x="", y="") +
+    ylim(0,1) + # max value: 0.55
+    scale_fill_manual(values=response.colors) +
+    theme_bw() +
+    theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
+          axis.text.x=element_blank(), axis.text.y=element_blank(),
+          legend.position = "top") 
+}; pie.regen.ls <- lapply(names(response.colors), pie.regen.fc)
+
+png("results/figures/Q1_pie_regeneration.png", res=200,
+    height = 1000, width = 2500)
+print(
+  ggpubr::ggarrange(pie.regen.ls[[1]], pie.regen.ls[[2]], pie.regen.ls[[3]], nrow=1) %>% 
+    annotate_figure()
+)
+rm(pie.regen.fc, pie.regen.ls)
+dev.off()
+
+### Pixels ####
+pixel.dist.fc <- function(index) {
+  pie.dist.df %>% 
+    filter(name == names(response.colors)[index]) %>% 
+    ggplot(aes(x=1, y=1, fill=value)) +
+    geom_tile() +
+    facet_grid(rows=vars(size), cols=vars(freq), as.table = F, switch = "both") +
+    scale_fill_gradient(low="white", high=response.colors[index], limits=c(0,max(pie.dist.df$value))) +
+    theme_minimal() +
+    coord_equal() +
+    scale_x_discrete(position = "top") +
+    labs(fill="", x=as.character(names(response.colors)[index]), y="") +
+    theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
+          axis.text.x=element_blank(), axis.text.y=element_blank(),
+          legend.position = "bottom") 
+}; pixel.dist.ls <- lapply(1:3, pixel.dist.fc)
+pixel.dist <- ggpubr::ggarrange(pixel.dist.ls[[1]], pixel.dist.ls[[2]], pixel.dist.ls[[3]], nrow=1) %>% 
+  annotate_figure(top="Disturbance processes")
+pixel.regen.fc <- function(index) {
+  pie.regen.df %>% 
+    filter(name == names(response.colors)[index]) %>% 
+    ggplot(aes(x=1, y=1, fill=value)) +
+    geom_tile() +
+    facet_grid(rows=vars(fecundity), cols=vars(browsing), as.table = F, switch = "both") +
+    scale_fill_gradient(low="white", high=response.colors[index], limits=c(0,max(pie.dist.df$value))) +
+    theme_minimal() +
+    coord_equal() +
+    scale_x_discrete(position = "top") +
+    labs(fill="", x=as.character(names(response.colors)[index]), y="") +
+    theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
+          axis.text.x=element_blank(), axis.text.y=element_blank(),
+          legend.position = "bottom") 
+}; pixel.regen.ls <- lapply(1:3, pixel.regen.fc)
+pixel.regen <- ggpubr::ggarrange(pixel.regen.ls[[1]], pixel.regen.ls[[2]], pixel.regen.ls[[3]], nrow=1) %>% 
+  annotate_figure(top="Regeneration processes")
+
+png("results/figures/Q1_pixel.png", res=200,
+    height = 2000, width = 2800)
+print(
+  ggpubr::ggarrange(pixel.dist, pixel.regen, nrow = 2)
+)
+rm(pixel.dist.fc, pixel.dist.ls, pixel.regen.fc, pixel.regen.ls, pixel.dist, pixel.regen)
+dev.off()
+
+## Reponse line plots ####
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 
 patch.df <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
@@ -95,8 +166,7 @@ dev.off()
 # -> calculate disturbance rate only based on first 5-10 simulation years?
 
 
-
-# overall mean disturbance rate 
+# overall mean disturbance rate on x-axis
 dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(climate=="baseline", year==80) %>% dplyr::select(-year) %>% 
   full_join(patch.df %>% 
@@ -112,7 +182,6 @@ dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls
          '3. Remaining forest\nStem density dropping below 50 trees/ha' = 11) %>%  
   pivot_longer(9:11) %>% 
   mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn))
-
 dist.dyn.df$dist.dyn %>% summary() # chose sensible labels
 
 png("results/figures/Q1_responseLine_disturbanceRate_10yrs.png", res=200,
@@ -130,7 +199,32 @@ dist.dyn.df %>%
   theme(legend.position = "top")
 dev.off()
 
-# interaction plots (actually Q2) ####
+
+# relative disturbance rate
+png("results/figures/Q1_responseLine_disturbanceRate_relative_10yrs.png", res=200,
+    height=1300, width=2000)
+dist.dyn.df %>% 
+  full_join(dist.dyn.df %>% 
+              filter(size==1, freq==1, fecundity==100, browsing==1) %>% 
+              group_by(landscape) %>% 
+              summarise(dist.dyn_ref = mean(dist.dyn)) %>% 
+              dplyr::select(landscape, dist.dyn_ref), multiple = "all", by = "landscape") %>% 
+  mutate(dist.change = (dist.dyn - dist.dyn_ref)/dist.dyn_ref,
+         landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+  ggplot(aes(x = dist.change, y = value*100, col = name)) +
+  geom_point(size = 0.1, alpha = 0.5) +
+  geom_smooth(method = "loess", se = FALSE) +
+  facet_grid(~landscape) +
+  ylim(0, 100) +
+  labs(y = "Landscape unchanged [%]", col = "Response",
+       x = paste0("Percent change in disturbance rate [%]\nRates based on only the first ", unique(dist.dyn.df$n_year)," simulation years")) +
+  theme_bw() +
+  theme(legend.position = "top")
+dev.off()
+
+
+
+# Interaction plots (actually Q2) ####
 
 # needed data frames see "line plots"
 
@@ -150,8 +244,6 @@ dist.dyn.df_climate <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],ove
          '3. Remaining forest\nStem density dropping below 50 trees/ha' = 11) %>%  
   pivot_longer(9:11) %>% 
   mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn))
-
-head(dist.dyn.df_climate)
 
 dist.dyn.df_climate$dist.dyn %>% summary() # chose sensible labels
 
@@ -178,7 +270,6 @@ dev.off()
 ## forest loss: little interaction
 
 # effect plot
-
 dist.dyn.effect <- dist.dyn.df_climate %>% 
   filter(climate=="baseline") %>% 
   dplyr::select(-climate, -identifier, -n_year) %>% 
@@ -190,15 +281,15 @@ dist.dyn.effect <- dist.dyn.df_climate %>%
 
 summary(dist.dyn.effect)
 effect.background <- data.frame(interaction = factor(c("Dampening", "Amplifying"), levels=c("Dampening", "Amplifying")),
-                         xmin = c(0, 0), xmax = c(Inf, Inf),
-                         ymin = c(0, -Inf), ymax = c(Inf, 0))
-
+                                xmin = c(0, 0), xmax = c(Inf, Inf),
+                                ymin = c(0, -Inf), ymax = c(Inf, 0))
+# absolute disturbance rate
 png("results/figures/Q2_climateEffect_disturbanceRate_10yrs.png", res=200,
     height=1300, width=2000)
 dist.dyn.effect %>% 
   ggplot() +
   geom_rect(data=effect.background, 
-            aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.5) +
+            aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
   geom_point(aes(x=dist.dyn_baseline, y=effect*100, col=landscape),
              size=0.05) +
   geom_smooth(aes(x=dist.dyn_baseline, y=effect*100),
@@ -208,9 +299,98 @@ dist.dyn.effect %>%
   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
   scale_fill_manual(name = "Interaction type",
-                    values = c("Dampening" = "#266867", "Amplifying"="#f55800"),
+                    values = c("Dampening" = "#018571", "Amplifying"="#d01c8b"),
                     labels = c("Dampening:\nless landscape changed", "Amplifying:\nmore landscape changed")) +
   labs(x = "Simulated disturbance rate [% yr^-1]\nRate based on only the first 10 simulation years\nAxis log10-transformed",
        y = "Climate effect [%] ", title="Effect of climate on landscape unchanged compared to baseline") +
   theme_bw()
 dev.off()
+
+# relative disturbance rate
+png("results/figures/Q2_climateEffect_disturbanceRate_relative_10yrs.png", res=200,
+    height=1300, width=2000)
+dist.dyn.effect %>% 
+  full_join(dist.dyn.effect %>% 
+              filter(size==1, freq==1, fecundity==100, browsing==1) %>% 
+              group_by(landscape) %>% 
+              summarise(dist.dyn_ref = mean(dist.dyn_baseline)) %>% 
+              dplyr::select(landscape, dist.dyn_ref), multiple = "all", by = "landscape") %>% 
+  mutate(dist.change = (dist.dyn_baseline - dist.dyn_ref)/dist.dyn_ref,
+         landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+  ggplot() +
+  geom_rect(data=effect.background, 
+            aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
+  geom_point(aes(x=dist.change, y=effect*100),
+             size=0.05) +
+  geom_smooth(aes(x=dist.change, y=effect*100),
+              method = "loess", se = F, col="black") +
+  geom_hline(aes(yintercept=0)) +
+  facet_grid(landscape~name) +
+  scale_fill_manual(name = "Interaction type",
+                    values = c("Dampening" = "#018571", "Amplifying"="#143d59"),
+                    labels = c("Dampening:\nless landscape changed", "Amplifying:\nmore landscape changed")) +
+  labs(x = "Percent change in disturbance rate [%]\nRates based on only the first 10 simulation years",
+       y = "Climate effect [%] ", title="Effect of climate on landscape unchanged compared to baseline") +
+  theme_bw()
+dev.off()
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# DISCARDED ####
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# # disturbance processes
+# png("results/figures/Q1_pie_disturbance_x.png", res=200,
+#     height = 1500, width = 2000)
+# bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+#   filter(climate=="baseline", year==80) %>% 
+#   mutate(across(10:12, ~ abs(.x-1)*100)) %>%  # transform to % landscape changed
+#   group_by(size, freq) %>% 
+#   summarise(across(8:10, sum)) %>% ungroup() %>% 
+#   mutate(across(3:5, ~ .x/24000)) %>% # maximum sum = 24000 (100 % * 5 reps * 16 regen scenarios * 3 landscapes)
+#   rename('1. Structure\nBasal area decreased by >50 % from reference' = 3,
+#          '2. Composition\nDominant species changed from reference' = 4,
+#          '3. Remaining forest\nStem density dropping below 50 trees/ha' = 5) %>% 
+#   pivot_longer(3:5) %>% 
+#   mutate(size = paste0("Size * ", size), freq = paste0("Frequency * ", freq),
+#          size = factor(size, levels=c(paste0("Size * ", c(1, 2, 5, 10)))),
+#          freq = factor(freq, levels=c(paste0("Frequency * ", c(1, 2, 5, 10))))) %>% 
+#   ggplot(aes(x=0, y=value, fill=name)) +
+#   geom_bar(stat="identity") +
+#   facet_grid(rows=vars(size), cols=vars(freq), as.table = F, switch = "both") +
+#   coord_polar("x") + # "y": pie chart but all same size, "x": weird drop pattern chart, but different sizes
+#   labs(fill="Response", x="", y="", title="Breaking the system: disturbance processes") +
+#   theme_bw() +
+#   theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
+#         axis.text.x=element_blank(), axis.text.y=element_blank(),
+#         legend.position = "top") 
+# dev.off()
+# 
+# 
+# # regeneration processes
+# png("results/figures/Q1_pie_regeneration_y.png", res=200,
+#     height = 1500, width = 2000)
+# bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+#   filter(climate=="baseline", year==80) %>% 
+#   mutate(across(10:12, ~ abs(.x-1)*100)) %>%  # transform to % landscape changed
+#   group_by(fecundity, browsing) %>% 
+#   summarise(across(8:10, sum)) %>% ungroup() %>% 
+#   mutate(across(3:5, ~ .x/24000)) %>% # maximum sum = 24000 (100 % * 5 reps * 16 regen scenarios * 3 landscapes)
+#   rename('1. Structure\nBasal area decreased by >50 % from reference' = 3,
+#          '2. Composition\nDominant species changed from reference' = 4,
+#          '3. Remaining forest\nStem density dropping below 50 trees/ha' = 5) %>% 
+#   pivot_longer(3:5) %>%
+#   mutate(fecundity = paste0("Fecundity * ", fecundity, "%"), browsing = paste0("Browsing * ", browsing),
+#          fecundity = factor(fecundity, levels=c(paste0("Fecundity * ", c(100, 50, 20, 10), "%"))),
+#          browsing = factor(browsing, levels=c(paste0("Browsing * ", c(1, 2, 5, 10))))) %>% 
+#   ggplot(aes(x=0, y=value, fill=name)) +
+#   geom_bar(stat="identity") +
+#   facet_grid(rows=vars(fecundity), cols=vars(browsing), as.table = F, switch = "both") +
+#   coord_polar("y") + 
+#   labs(fill="Response", x="", y="", title="Breaking the system: regeneration processes") +
+#   theme_bw() +
+#   theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
+#         axis.text.x=element_blank(), axis.text.y=element_blank(),
+#         legend.position = "top") 
+# dev.off()
+
+
