@@ -33,7 +33,7 @@ for (landscape_i in 1:3) {
     ds.ref <- bind_rows(ds.ref_i, ds.ref); rm(ds.ref_i)
   }
   
-  rem <- data.frame(); ls <- data.frame(); ds.basal <- data.frame(); ds.dom <- data.frame(); ds.forest <- data.frame(); missing <- c(NA); patch <- data.frame()
+  rem <- data.frame(); ls <- data.frame(); ds.basal <- data.frame(); ds.dom <- data.frame(); ds.forest <- data.frame(); missing <- c(NA); patch <- data.frame(); regen <- data.frame()
   for (i in c(1:2560)) { # nrow(master)) {
     dbname <- paste0("raw_data/breakingTheSystem_", toupper(landscapename) ,"_Results/data", master$run_id[i], "/output.sqlite")
     patch_file <- paste0("raw_data/breakingTheSystem_", toupper(landscapename) ,"_Results/data", master$run_id[i], "/patches.csv")
@@ -166,10 +166,25 @@ for (landscape_i in 1:3) {
                n_cells = ifelse(killed_ba == 0, 0, n_cells)) %>%
         filter(n_cells > 0)
       
+      # regeneration rate ####
+      regen.i <- ls.i %>% 
+        group_by(landscape, year, identifier, size, freq, climate, rep, browsing, fecundity) %>% 
+        summarise(count.sum = sum(count_ha)) %>% ungroup() %>% 
+        mutate(count.previous = lag(count.sum),
+               zuwachs = count.sum - count.previous) %>% ungroup() %>% 
+        filter(year > 0) %>% 
+        full_join(rem.i %>% 
+                    filter(year > 0) %>% 
+                    mutate(count_ha = count/areas[landscape_i, "area"]) %>% 
+                    group_by(landscape, year) %>% # sum up over species + causes of death
+                    summarise(died = sum(count_ha)) %>% ungroup(), by = c("year", "landscape")) %>% 
+        mutate(born = zuwachs + died,
+               recruited_mean = mean(born)) # mean number of trees that are recruited per year and hectare
+      
       # combine all scenarios for the different outputs
-      rem <- bind_rows(rem, rem.i); ls <- bind_rows(ls, ls.i); patch <- bind_rows(patch, patch.i)
+      rem <- bind_rows(rem, rem.i); ls <- bind_rows(ls, ls.i); patch <- bind_rows(patch, patch.i); regen <- bind_rows(regen, regen.i)
       ds.basal <- bind_rows(ds.basal, ds.basal.i); ds.dom <- bind_rows(ds.dom, ds.dom.i); ds.forest <- bind_rows(ds.forest, ds.forest.i)
-      rm(db.conn, rem.i, ls.i, patch.i, ds.i, ds.basal.i, ds.dom.i, ds.forest.i)
+      rm(db.conn, rem.i, ls.i, patch.i, regen.i, ds.i, ds.basal.i, ds.dom.i, ds.forest.i)
     } else { 
       missing <- c(missing, i); print(paste0("Oh no! Seems like I (", i, ") am missing")) 
     }
@@ -180,8 +195,8 @@ for (landscape_i in 1:3) {
   # missing.ls[[landscapename]] <- missing
   # ls.ls[[landscapename]] <- ls; rem.ls[[landscapename]] <- rem; patch.ls[[landscapename]] <- patch
   saveRDS(ls, paste0("results/datasets/ls_", landscapename,"_backup.RDATA")); saveRDS(rem, paste0("results/datasets/rem_", landscapename,"_backup.RDATA")); saveRDS(missing, paste0("results/datasets/missing_", landscapename,"_backup.RDATA"))
-  saveRDS(patch, paste0("results/datasets/patch_", landscapename,"_backup.RDATA")); saveRDS(list(ds.basal, ds.dom, ds.forest), paste0("results/datasets/ds.ls_", landscapename,"_backup.RDATA"))
-  rm(ls, rem, patch, ds.ref, ds.basal, ds.dom, ds.forest, master, dbname, missing)
+  saveRDS(patch, paste0("results/datasets/patch_", landscapename,"_backup.RDATA")); saveRDS(list(ds.basal, ds.dom, ds.forest), paste0("results/datasets/ds.ls_", landscapename,"_backup.RDATA")); saveRDS(regen, paste0("results/datasets/regen_", landscapename,"_backup.RDATA"))
+  rm(ls, rem, patch, regen, ds.ref, ds.basal, ds.dom, ds.forest, master, dbname, missing)
   gc()
   
 } #; saveRDS(ds.ls, "results/datasets/ds.ls.RDATA"); saveRDS(ls.ls, "results/datasets/ls.ls.RDATA"); saveRDS(patch.ls, "results/datasets/patch.ls.RDATA"); saveRDS(rem.ls, "results/datasets/rem.ls.RDATA"); saveRDS(missing.ls, "results/datasets/missing.ls.RDATA")
@@ -197,6 +212,8 @@ for (landscape_i in 1:3) {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Sub-data frames of ds.ls ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+# add regeneration rate to overtime.ls?
 
 # empty lists
 overtime.ls <- list(c(), c(), c()); names(overtime.ls) <- landscapes

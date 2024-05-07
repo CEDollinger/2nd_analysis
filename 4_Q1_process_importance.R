@@ -133,7 +133,7 @@ print(
 rm(pixel.dist.fc, pixel.dist.ls, pixel.regen.fc, pixel.regen.ls, pixel.dist, pixel.regen)
 dev.off()
 
-## Reponse line plots ####
+## Response line plots ####
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 
 patch.df <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
@@ -146,6 +146,10 @@ patch.df <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
   full_join(areas, by="landscape") 
+
+regen.df <-  bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
+                       readRDS("results/datasets/regen_grte_backup.RDATA"),
+                       readRDS("results/datasets/regen_stoko_backup.RDATA"))
 
 # disturbance rate per year
 png("results/figures/Q0_disturbanceRate_10x10.png", res=200,
