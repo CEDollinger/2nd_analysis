@@ -1,0 +1,88 @@
+---
+title: "Results for the 2nd study"
+author: "CDollinger"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: yeti
+knit: (
+  function(inputFile, encoding) { 
+  
+    pSubTitle <-  paste0("2ndStudy_analysis_", Sys.Date());
+    rmarkdown::render( 
+      input       = inputFile, 
+      encoding    = "UTF-8", 
+      params      = list(sub_title = pSubTitle),      
+      output_file = pSubTitle) }
+      )
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path)); getwd() # set wd to file location
+```
+
+> Here are the results for the complete set of runs (3 landscapes x 2560 scenarios)!
+
+
+# Method
+>
+> Four (out of many) processes influencing forest reorganization: 
+>
+> disturbance sizes, disturbance frequency, seed availability, sapling height growth
+>
+> These processes are impacted by climate change (increased disturbance activity, decreased regeneration success) → climate-mediated process deterioration
+>
+> How much process deterioration can the system take before “breaking”?
+>
+
+>
+> Study concept:
+>
+> Why not deteriorate processes artificially (“process modification”, 3 deterioration levels each)?
+>
+> “Breaking the system”: change compared to *reference* level, for composition proportion of landscape where *dominant species changed* [dominance based on IV, %] and for structure proportion of landscape where *basal area decreased by more than 50 %* [%] compared to reference 
+> 
+> Additional indicator: regime shift (count/ha < 50 trees)
+> 
+*Reference*: value under reference conditions (no process modification + baseline climate, rep 1), calculated for each RU and each year
+
+
+# Results (13.05.2024)
+
+## Q1: How do the 4 investigated processes influence system breakage? Who is most important? 
+
+![](results/figures/Q1_pie_disturbance.png) 
+
+
+
+![](results/figures/.png)
+
+> next question
+
+
+## Q2: Is the impact of the processes modulated by changing climatic conditions or independent?
+
+
+![](results/figures/.png)
+
+> next question
+
+
+## Q3: Within landscape variability
+
+
+
+
+
+\~ the end (for now...) \~
+
+
+
+
+
+
+

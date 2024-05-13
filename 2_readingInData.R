@@ -6,7 +6,7 @@
 # ds.ls.i <- list(tibble(), tibble(), tibble()); names(ds.ls.i) <- c("basal", "dom", "forest")
 # ds.ls <- list(ds.ls.i, ds.ls.i, ds.ls.i); names(ds.ls) <- landscapes; rm(ds.ls.i)
 landscape_i <- 1; i<-1; id<-1
-for (landscape_i in 1:3) {
+for (landscape_i in c(3)) {
   landscapename <- landscapes[landscape_i]
   master <- read_delim(paste0("../project2ndStudy/dss/breakingTheSystem_", toupper(landscapename), "/cluster_master_", landscapename, ".csv"))
   #master <- read_delim(paste0("../project2ndStudy/cluster_master_", landscapename, ".csv"))
@@ -203,23 +203,21 @@ for (landscape_i in 1:3) {
 
 # note
 ## date: 
-## server: anduin
-## saving data to: Z:\ ge93ruw NAS
-## landscape(s) running:
-## landscape(s) finished and saved: bgd, grte, stoko (17.04, 9:00)
+## server: 
+## saving data to: E:\ 
+## landscape(s) running: 
+## landscape(s) finished and saved: grte (11.05, 01:00); bgd (12.05, 04:00); stoko (12.05, 18:00) 
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Sub-data frames of ds.ls ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# add regeneration rate to overtime.ls?
-
 # empty lists
 overtime.ls <- list(c(), c(), c()); names(overtime.ls) <- landscapes
 
 landscape_i <- 3
-for (landscape_i in 3:3) {
+for (landscape_i in 1:2) {
   landscapename <- landscapes[landscape_i]
   
   ds.ls <- readRDS(paste0("results/datasets/ds.ls_", landscapename, "_backup.RDATA")) # bgd: 26 GB
@@ -247,15 +245,17 @@ for (landscape_i in 3:3) {
   print(overtime.ls[[landscapename]] %>% #summary()
           filter(identifier %in% c("baseline_rep1_size1_freq1_browsing1_fecundity100",
                                    "hotdry_rep1_size1_freq1_browsing1_fecundity100")) )
-  # test: props should always be very close to 1 for baseline and for year 0 hotdry, i.e., rows 1-4 cols 10-12
   
-  if (landscapename == "stoko") overtime.ls[["stoko"]]<-overtime.ls[["stoko"]][-709,] # fix malformed factor
-  if (landscapename == "grte") overtime.ls[["grte"]]<-overtime.ls[["grte"]][-7681,]
+  # test: props should always be 1 for year 0 (baseline + hotdry)
+  
+  
+  # if (landscapename == "stoko") overtime.ls[["stoko"]]<-overtime.ls[["stoko"]][-709,] # fix malformed factor
+  # if (landscapename == "grte") overtime.ls[["grte"]]<-overtime.ls[["grte"]][-7681,]
   
   # map.df ####
   
   # fix malformed factor in shiretoko
-  if (landscapename == "stoko") ds.ls[["basal"]][ds.ls[["basal"]]$rid==35001 & ds.ls[["basal"]]$climate=="baseline" & ds.ls[["basal"]]$rep==1 & ds.ls[["basal"]]$size==10 & ds.ls[["basal"]]$freq==5 & ds.ls[["basal"]]$browsing==5 & ds.ls[["basal"]]$year==80 & ds.ls[["basal"]]$threshold=="above",][2,"fecundity"] <- factor("50", levels=c(100,50,20,10))
+  # if (landscapename == "stoko") ds.ls[["basal"]][ds.ls[["basal"]]$rid==35001 & ds.ls[["basal"]]$climate=="baseline" & ds.ls[["basal"]]$rep==1 & ds.ls[["basal"]]$size==10 & ds.ls[["basal"]]$freq==5 & ds.ls[["basal"]]$browsing==5 & ds.ls[["basal"]]$year==80 & ds.ls[["basal"]]$threshold=="above",][2,"fecundity"] <- factor("50", levels=c(100,50,20,10))
   
   a<-ds.ls[["basal"]] %>% 
     #sample_frac(0.001) %>% 
