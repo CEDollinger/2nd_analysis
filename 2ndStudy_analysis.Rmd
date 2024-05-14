@@ -29,6 +29,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 # Method
+
 >
 > Four (out of many) processes influencing forest reorganization: 
 >
@@ -50,26 +51,144 @@ knitr::opts_chunk$set(echo = TRUE)
 > 
 *Reference*: value under reference conditions (no process modification + baseline climate, rep 1), calculated for each RU and each year
 
+## Simulations
+(4 process levels ^ 4 processes) * 2 climate scenarios * 3 landscapes * 5 reps = 7,680 runs
+
+Process levels: reference * c(2, 5, 10); special case fecundity: reference / c(2,5,10)
+
 
 # Results (13.05.2024)
 
 ## Q1: How do the 4 investigated processes influence system breakage? Who is most important? 
 
+*! Baseline climate only !*
+
+### Disturbance processes
+
 ![](results/figures/Q1_pie_disturbance.png) 
 
+> 
+> Substantial increase in system breakage responses. 
+> 
+> Size has a faster effect than frequency
+> 
 
 
-![](results/figures/.png)
+### Regeneration processes
 
-> next question
+![](results/figures/Q1_pie_regeneration.png) 
+
+> 
+> Substantial increase in system breakage responses, but already a lot of system breakage at baseline level (-> indication of less influence than disturbance processes). 
+> 
+> Browsing has a faster effect than fecundity
+> 
+
+**Alternative plot type**
+(first row: disturbance processes; second row: regeneration processes)
+
+
+![](results/figures/Q1_pixel.png) 
+
+
+### Continuous process rates
+
+Combine two disturbance and two regeneration processes each into one continuous rate:
+
+* Disturbance rate: pct of landscape area disturbed every year (mean patch size * number of events / 80 years)
+
+* Regeneration rate: number of trees recruited into the tree layer per year and hectare
+
+
+#### Disturbance rate
+
+**Caveat**: I calculated the mean annual disturbance rate based only on the first 10 years of the simulation. If I calculate it over the whole simulation period (80 years), the values for Grand Teton become really small (rate of only 4 % yr^-1 for scenario size * 10 and freq * 10) because in the later simulation years there is simply no more forest that could be disturbed... (Interesting dampening feedback loop! If there is no more forest, no more forest will be disturbed! 🤯): 
+
+![](results/figures/Q0_disturbanceRate_10x10.png)
+
+** But back to the results** :
+
+![](results/figures/Q1_responseLine_disturbanceRate_10yrs.png)
+
+> 
+> Structure and forest loss are more sensitive to an increase in disturbance rate -> strong decrease in "landscape unchanged" starting at a disturbance rate of ~0.5% yr^-1
+> 
+> Composition change less sensitive
+> 
+> Very nice, continuous gradient over all scenarios and landscapes
+> 
+
+
+#### Regeneration rate
+
+**Less nice**: interesting (weird?) patterns across landscapes. 
+
+Hypothesis: disturbance rate increases regeneration rate because disturbances create gaps in the canopy layer which gives saplings an opportunity to grow up. 
+
+Antithesis: however if disturbance rate is too high (i.e., disturbances too frequent or patches too big) saplings will have less opportunity to regenerate, either because of a lack of seed sources (patches too big -> distance to next mature forest too long; frequency too high -> immaturity risk) or lack of time to regenerate before next disturbance.
+
+Either way, regeneration rate is dependent on disturbance rate, while disturbance rate is less (if not at all) dependent on regeneration rate (theoretically, regeneration rate could get so low that no forest is left to be disturbed)
+
+
+*So, I had a look at the relationship between disturbance rate and regeneration rate*
+
+![](results/figures/Q0_relationship_regenRate_distRate.png)
+
+> 
+> STOKO: no relationship
+> 
+> BGD: positive relationship -> regeneration rate profits from increase in disturbances (max. disturbance rate: 6.45 % yr^-1)
+> 
+> GRTE: negative relationship -> regeneration rate decreases as the disturbance rate increases, **BUT** fire also only agent to kill saplings (wind and bark beetle only kill adult trees)
+> 
+
+
+**Would the regeneration rate in BGD also start to decrease if the disturbance rate was as high as in GRTE?? Aka, is this a universal pattern or are the landscape-specific forces at work? And STOKO: would regeneration rate increase if the disturbance rate increased?**
+
+Maybe not though...
+
+![](results/figures/Q0_relationship_regenRate_distRate_noFacet.png)
+
+
+**Anyways, here are the results for regeneration rate** (regeneration rate calculated over whole simulation period):
+
+![](results/figures/Q1_responseLine_regenerationRate_80yrs.png)
+
+> 
+> Structure and forest loss are more sensitive to an decrease in regeneration rate -> strong decrease in "landscape unchanged" starting at a disturbance rate of ~0.5% yr^-1
+> 
+> Composition change less sensitive
+> 
+> **Basically same results as for disturbance rate**
+> 
+
 
 
 ## Q2: Is the impact of the processes modulated by changing climatic conditions or independent?
 
+**Climate effect** : value under hotdry conditions - value under baseline conditions [pct points]
 
-![](results/figures/.png)
+![](results/figures/Q2_climateEffect_disturbanceRate_10yrs.png)
 
-> next question
+> 
+> Structure change: dampening effect at low-medium disturbance rates
+> 
+> Composition: strong amplifying effects at low disturbance rates, dampening effect at high disturbance rates
+> 
+> Forest loss: little interaction, generally dampening
+> 
+> **HOWEVER** : differences between landscapes visible, especially for structure (BGD: still dampening even if disturbance rate increased more?!)
+
+Disturbance rate change for each landscape:
+
+![](results/figures/Q2_climateEffect_disturbanceRate_relative_10yrs.png)
+
+Here for regeneration rate:
+
+
+![](results/figures/Q2_climateEffect_regenerationRate_80yrs.png)
+
+
 
 
 ## Q3: Within landscape variability

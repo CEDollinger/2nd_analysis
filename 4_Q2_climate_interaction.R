@@ -108,16 +108,16 @@ dist.dyn.effect %>%
   ggplot() +
   geom_rect(data=effect.background, 
             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
-  geom_point(aes(x=dist.dyn_baseline, y=effect*100, col=landscape),
+  geom_point(aes(x=dist.dyn_baseline, y=effect*100),
              size=0.05) +
-  # geom_smooth(aes(x=dist.dyn_baseline, y=effect*100),
-  #             method = "loess", se = F, col="black") +
+  geom_smooth(aes(x=dist.dyn_baseline, y=effect*100, col=landscape),
+              method = "loess", se = F) +
   geom_hline(aes(yintercept=0)) +
   facet_grid(~name) +
   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
   scale_fill_manual(name = "Interaction type",
-                    values = c("Dampening" = "#018571", "Amplifying"="#143d59"),
+                    values = c("Dampening" = "#A1BE95", "Amplifying"="#F98866"),
                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
   labs(x = "Simulated disturbance rate [% yr^-1]\nRate based on only the first 10 simulation years\nAxis log10-transformed",
        y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
@@ -125,32 +125,32 @@ dist.dyn.effect %>%
 dev.off()
 
 # relative disturbance rate
-# png("results/figures/Q2_climateEffect_disturbanceRate_relative_10yrs.png", res=200,
-#     height=1300, width=2000)
-# dist.dyn.effect %>% 
-#   full_join(dist.dyn.effect %>% 
-#               filter(size==1, freq==1, fecundity==100, browsing==1) %>% 
-#               group_by(landscape) %>% 
-#               summarise(dist.dyn_ref = mean(dist.dyn_baseline)) %>% 
-#               dplyr::select(landscape, dist.dyn_ref), multiple = "all", by = "landscape") %>% 
-#   mutate(dist.change = (dist.dyn_baseline - dist.dyn_ref)/dist.dyn_ref,
-#          landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
-#   ggplot() +
-#   geom_rect(data=effect.background, 
-#             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
-#   geom_point(aes(x=dist.change, y=effect*100),
-#              size=0.05) +
-#   geom_smooth(aes(x=dist.change, y=effect*100),
-#               method = "loess", se = F, col="black") +
-#   geom_hline(aes(yintercept=0)) +
-#   facet_grid(landscape~name) +
-#   scale_fill_manual(name = "Interaction type",
-#                     values = c("Dampening" = "#018571", "Amplifying"="#143d59"),
-#                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
-#   labs(x = "Percent change in disturbance rate [%]\nRates based on only the first 10 simulation years",
-#        y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
-#   theme_bw()
-# dev.off()
+png("results/figures/Q2_climateEffect_disturbanceRate_relative_10yrs.png", res=200,
+    height=1300, width=2000)
+dist.dyn.effect %>%
+  full_join(dist.dyn.effect %>%
+              filter(size==1, freq==1, fecundity==100, browsing==1) %>%
+              group_by(landscape) %>%
+              summarise(dist.dyn_ref = mean(dist.dyn_baseline)) %>%
+              dplyr::select(landscape, dist.dyn_ref), multiple = "all", by = "landscape") %>%
+  mutate(dist.change = (dist.dyn_baseline - dist.dyn_ref)/dist.dyn_ref,
+         landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>%
+  ggplot() +
+  geom_rect(data=effect.background,
+            aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
+  geom_point(aes(x=dist.change, y=effect*100),
+             size=0.05) +
+  geom_smooth(aes(x=dist.change, y=effect*100),
+              method = "loess", se = F, col="black") +
+  geom_hline(aes(yintercept=0)) +
+  facet_grid(landscape~name) +
+  scale_fill_manual(name = "Interaction type",
+                    values = c("Dampening" = "#A1BE95", "Amplifying"="#F98866"),
+                    labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
+  labs(x = "Percent change in disturbance rate [%]\nRates based on only the first 10 simulation years",
+       y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
+  theme_bw()
+dev.off()
 
 
 ### regeneration rate ####
@@ -171,15 +171,15 @@ regen.dyn.effect %>%
   ggplot() +
   geom_rect(data=effect.background, 
             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
-  geom_point(aes(x=regen.dyn_baseline, y=effect*100, col=landscape),
+  geom_point(aes(x=regen.dyn_baseline, y=effect*100),
              size=0.05) +
-  # geom_smooth(aes(x=regen.dyn_baseline, y=effect*100),
-  #             method = "loess", se = F, col="black") +
+  geom_smooth(aes(x=regen.dyn_baseline, y=effect*100, col=landscape),
+              method = "loess", se = F) +
   geom_hline(aes(yintercept=0)) +
   facet_grid(~name) +
   scale_x_reverse() +
   scale_fill_manual(name = "Interaction type",
-                    values = c("Dampening" = "#018571", "Amplifying"="#143d59"),
+                    values = c("Dampening" = "#A1BE95", "Amplifying"="#F98866"),
                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
   labs(x = "Simulated regeneration rate [Mean number of tress recruited per ha yr^-1]\nRate based on all 80 simulation years",
        y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
@@ -215,33 +215,7 @@ dev.off()
 #   theme_bw()
 # dev.off()
 
+values = c("Dampening" = "#018571", "Amplifying"="#143d59")
 
-## try out sth new ####
 
-dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
-  filter(year==80) %>% dplyr::select(-year) %>% 
-  full_join(patch.df %>% 
-              filter(year %in% 1:10) %>% 
-              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
-              # mean yearly disturbance rate: area_disturbed to ha -> divide by landscape area -> convert to %
-              summarise(dist.dyn = mean(area_disturbed/100/area*100)) , 
-            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%  
-  full_join(regen.df %>% 
-              filter(year %in% 1:80) %>% 
-              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
-              # mean yearly disturbance rate: area_disturbed to ha -> divide by landscape area -> convert to %
-              summarise(regen.dyn = mean(born)), 
-            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape", "area")) %>% 
-  pivot_longer(9:11) %>% 
-  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn),
-         regen.dyn = ifelse(is.na(regen.dyn), 0, regen.dyn))
 
-png("results/figures/Q0_relationship_regenRate_distRate.png", res=200,
-    height=1300, width=2000)
-dyn.df %>% 
-  filter(name == "1. Structure\nBasal area decreased by >50 % from reference") %>%  
-  ggplot(aes(x=dist.dyn, y=regen.dyn)) +
-  geom_point() +
-  facet_grid(~landscape, scales="free") +
-  theme_bw()
-dev.off()

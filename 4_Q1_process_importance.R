@@ -147,8 +147,8 @@ patch.df <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
   full_join(areas, by="landscape") 
 
 regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
-                       readRDS("results/datasets/regen_grte_backup.RDATA"),
-                       readRDS("results/datasets/regen_stoko_backup.RDATA")) %>% 
+                      readRDS("results/datasets/regen_grte_backup.RDATA"),
+                      readRDS("results/datasets/regen_stoko_backup.RDATA")) %>% 
   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
@@ -284,6 +284,8 @@ regen.dyn.df %>%
               dplyr::select(landscape, regen.dyn_ref), multiple = "all", by = "landscape") %>% 
   mutate(regen.change = (regen.dyn - regen.dyn_ref)/regen.dyn_ref,
          landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+  # mutate(full.id = paste0(landscape, "_", identifier)) %>% 
+  # filter(full.id %ni% regenIncrease.id) %>% 
   ggplot(aes(x = regen.change*100, y = value*100, col = name)) +
   geom_point(size = 0.1, alpha = 0.5) +
   geom_smooth(method = "loess", se = FALSE) +
@@ -292,14 +294,95 @@ regen.dyn.df %>%
   ylim(0, 100) +
   scale_color_manual(values=response.colors) +
   labs(y = "Landscape unchanged [%]", col = "Response",
-       x = paste0("Percent change in regeneration rate [%]\nRates based on the first ", unique(regen.dyn.df$n_year)," simulation years")) +
+       x = paste0("Percent change in regeneration rate [%]\nRates based on the first ", unique(regen.dyn.df$n_year)," simulation years"),
+       #title="All runs with an increase in regeneration rate (looking at you BGD...) filtered out"
+  ) +
   theme_bw() +
   theme(legend.position = "top")
 dev.off()
 
+regenIncrease.id <- regen.dyn.df %>% 
+  full_join(regen.dyn.df %>% 
+              filter(size==1, freq==1, fecundity==100, browsing==1) %>% 
+              group_by(landscape) %>% 
+              summarise(regen.dyn_ref = mean(regen.dyn)) %>% 
+              dplyr::select(landscape, regen.dyn_ref), multiple = "all", by = "landscape") %>% 
+  mutate(regen.change = (regen.dyn - regen.dyn_ref)/regen.dyn_ref,
+         landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+  filter(regen.change>0) %>% 
+  mutate(full.id = paste0(landscape, "_", identifier)) %>% 
+  pull(full.id) 
 
 
+## Relationship dist and regen rate ####
 
+dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+  filter(year==80) %>% dplyr::select(-year) %>% 
+  full_join(patch.df %>% 
+              filter(year %in% 1:10) %>% 
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
+              # mean yearly disturbance rate: area_disturbed to ha -> divide by landscape area -> convert to %
+              summarise(dist.dyn = mean(area_disturbed/100/area*100)) , 
+            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%  
+  full_join(regen.df %>% 
+              filter(year %in% 1:80) %>% 
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
+              # mean yearly disturbance rate: area_disturbed to ha -> divide by landscape area -> convert to %
+              summarise(regen.dyn = mean(born)), 
+            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape", "area")) %>% 
+  pivot_longer(9:11) %>% 
+  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn),
+         regen.dyn = ifelse(is.na(regen.dyn), 0, regen.dyn)) %>% 
+  drop_na() # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
+
+png("results/figures/Q0_relationship_regenRate_distRate.png", res=200,
+    height=1300, width=2000)
+dyn.df %>% 
+  filter(name == "1. Structure\nBasal area decreased by >50 % from reference",
+         climate=="baseline") %>%  
+  mutate(landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+  ggplot(aes(x=dist.dyn, y=regen.dyn, col=landscape)) +
+  geom_point() +
+  facet_grid(~landscape, scales="free") +
+  # scale_y_reverse() +
+  labs(x="Disturbance rate [based on first 10 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+  theme_bw() +
+  theme(legend.position = "none")
+dev.off()
+
+# no facet
+png("results/figures/Q0_relationship_regenRate_distRate_noFacet.png", res=200,
+    height=1300, width=2000)
+dyn.df %>% 
+  filter(name == "1. Structure\nBasal area decreased by >50 % from reference",
+         climate=="baseline") %>%  
+  # mutate(full.id = paste0(landscape, "_", identifier)) %>% 
+  # filter(full.id %ni% regenIncrease.id) %>% 
+  mutate(landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+  ggplot(aes(x=dist.dyn, y=regen.dyn, col=landscape)) +
+  geom_point(col="black") +
+  geom_smooth(linewidth=2) +
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
+                label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
+  labs(x="Disturbance rate [based on first 10 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+  theme_bw() 
+dev.off()
+
+png("results/figures/Q0_relationship_regenRate_distRate_indicators.png", res=200,
+    height=1300, width=2000)
+dyn.df %>% 
+  filter(climate=="baseline") %>% 
+  ggplot(aes(x=dist.dyn, y=regen.dyn, col=value)) +
+  geom_point(size=0.1) +
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
+                label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
+  #scale_y_reverse() +
+  facet_grid(~name) +
+  labs(x="Disturbance rate [based on first 10 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+  theme_bw()
+dev.off()  
+  
+  
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # DISCARDED ####
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
