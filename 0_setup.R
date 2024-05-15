@@ -45,7 +45,7 @@ helper.files[["bgd"]][["stand"]] <- rast("../project2ndStudy/projectTest_bgd/gis
 helper.files[["bgd"]][["elev"]] <- rast("../project2ndStudy/projectTest_bgd/gis/dem100_rid.asc") %>% 
   resample(., helper.files[["bgd"]][["ru"]])
 helper.files[["bgd"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "../project2ndStudy/projectTest_bgd/database/species_bgd.sqlite") %>%
-  tbl(., "species") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
+  tbl(., "species") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin, displayColor) %>%
   rename(species = shortName) %>% mutate(lightResponseClass = as.numeric(lightResponseClass)) %>% 
   mutate(species.code = as.numeric(as.factor(species))) %>% 
   mutate(species.code = ifelse(species %in% common.species[["bgd"]], species.code, 0))
@@ -56,7 +56,7 @@ helper.files[["grte"]][["stand"]] <- rast("../project2ndStudy/projectTest_grte/g
 helper.files[["grte"]][["elev"]] <- rast("../project2ndStudy/projectTest_grte/gis/landscape_DEM.txt") %>%
   resample(., helper.files[["grte"]][["ru"]])
 helper.files[["grte"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "../project2ndStudy/projectTest_grte/database/species_grte.sqlite") %>%
-  tbl(., "species") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
+  tbl(., "species") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin, displayColor) %>%
   rename(species = shortName) %>% mutate(lightResponseClass = as.numeric(lightResponseClass)) %>%
   mutate(species.code = as.numeric(as.factor(species))) %>%
   filter(species %ni% c("Potr_backup", "Pial_backup_org", "Pico_backup")) %>%
@@ -68,7 +68,7 @@ helper.files[["stoko"]][["stand"]] <- rast("../project2ndStudy/projectTest_stoko
 helper.files[["stoko"]][["elev"]] <- rast("../project2ndStudy/projectTest_stoko/gis/jpn_elv_clipClim_JGD2000Zone13_res100m_cropped.asc") %>%
   resample(., helper.files[["stoko"]][["ru"]])
 helper.files[["stoko"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "../project2ndStudy/projectTest_stoko/database/species_stoko.sqlite") %>%
-  tbl(., "speciesParameters") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin) %>%
+  tbl(., "speciesParameters") %>% collect() %>% dplyr::select(shortName, lightResponseClass, isConiferous, sapHDSapling, psiMin, displayColor) %>%
   rename(species = shortName) %>% mutate(lightResponseClass = as.numeric(lightResponseClass)) %>%
   mutate(species.code = as.numeric(as.factor(species))) %>%
   mutate(species.code = ifelse(species %in% common.species$stoko, species.code, 0))

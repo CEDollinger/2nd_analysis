@@ -193,8 +193,47 @@ Here for regeneration rate:
 
 ## Q3: Within landscape variability
 
+Which parts of the landscapes are especially vulnerable to change?
+
+### Shiretoko
+
+![](results/figures/Q3_map_singleIndicators_stoko.png)
+
+>
+> Composition: generally more change at tree line and in certain elevation bands (above: baseline climate, below: hot-dry climate)
+> 
+> Structure: highest probability of change in higher elevations
+> 
+> Forest loss: highest probability of change at tree line
+> 
 
 
+
+### Berchtesgaden
+
+![](results/figures/Q3_map_singleIndicators_bgd.png)
+
+> 
+> Composition: highest probability of change in higher elevations (above: baseline climate, below: hot-dry climate)
+> 
+> Structure: highest probability of change at tree line, under baseline also in lower elevations
+> 
+> Forest loss: highest probability of change at tree line
+>
+
+
+
+### Grand Teton
+
+![](results/figures/Q3_map_singleIndicators_grte.png)
+
+> 
+> Composition: higher probability of change in lower elevations
+> 
+> Structure: high probability of change pretty much everywhere
+> 
+> Forest loss: high probability of change basically everywhere
+> 
 
 
 \~ the end (for now...) \~
