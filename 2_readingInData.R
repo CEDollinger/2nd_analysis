@@ -178,8 +178,7 @@ for (landscape_i in c(3)) {
                     mutate(count_ha = count/areas[landscape_i, "area"]) %>% 
                     group_by(landscape, year) %>% # sum up over species + causes of death
                     summarise(died = sum(count_ha)) %>% ungroup(), by = c("year", "landscape")) %>% 
-        mutate(born = zuwachs + died,
-               recruited_mean = mean(born)) # mean number of trees that are recruited per year and hectare
+        mutate(recruited_mean = zuwachs + died) 
       
       # combine all scenarios for the different outputs
       rem <- bind_rows(rem, rem.i); ls <- bind_rows(ls, ls.i); patch <- bind_rows(patch, patch.i); regen <- bind_rows(regen, regen.i)

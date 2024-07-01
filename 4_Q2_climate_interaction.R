@@ -15,6 +15,14 @@ patch.df <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
   full_join(areas, by="landscape")
+regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
+                      readRDS("results/datasets/regen_grte_backup.RDATA"),
+                      readRDS("results/datasets/regen_stoko_backup.RDATA")) %>% 
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
+  full_join(areas, by="landscape")
 
 # baseline - hotdry as two lines
 
@@ -105,6 +113,8 @@ summary(dist.dyn.effect)
 png("results/figures/Q2_climateEffect_disturbanceRate_10yrs.png", res=200,
     height=1300, width=2000)
 dist.dyn.effect %>% 
+  mutate(landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+         landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
   ggplot() +
   geom_rect(data=effect.background, 
             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
@@ -117,10 +127,12 @@ dist.dyn.effect %>%
   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
   scale_fill_manual(name = "Interaction type",
-                    values = c("Dampening" = "#A1BE95", "Amplifying"="#F98866"),
+                    values = c("Dampening" = "darkseagreen3", "Amplifying"="cornflowerblue"),
                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
   labs(x = "Simulated disturbance rate [% yr^-1]\nRate based on only the first 10 simulation years\nAxis log10-transformed",
-       y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
+       y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline",
+       col="Landscape") +
+  scale_color_manual(values=colors.landscape) +
   theme_bw()
 dev.off()
 
@@ -134,7 +146,8 @@ dist.dyn.effect %>%
               summarise(dist.dyn_ref = mean(dist.dyn_baseline)) %>%
               dplyr::select(landscape, dist.dyn_ref), multiple = "all", by = "landscape") %>%
   mutate(dist.change = (dist.dyn_baseline - dist.dyn_ref)/dist.dyn_ref,
-         landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>%
+         landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+         landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
   ggplot() +
   geom_rect(data=effect.background,
             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
@@ -145,7 +158,7 @@ dist.dyn.effect %>%
   geom_hline(aes(yintercept=0)) +
   facet_grid(landscape~name) +
   scale_fill_manual(name = "Interaction type",
-                    values = c("Dampening" = "#A1BE95", "Amplifying"="#F98866"),
+                    values = c("Dampening" = "darkseagreen3", "Amplifying"="cornflowerblue"),
                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
   labs(x = "Percent change in disturbance rate [%]\nRates based on only the first 10 simulation years",
        y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
@@ -168,6 +181,8 @@ summary(regen.dyn.effect)
 png("results/figures/Q2_climateEffect_regenerationRate_80yrs.png", res=200,
     height=1300, width=2000)
 regen.dyn.effect %>% 
+  mutate(landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+         landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
   ggplot() +
   geom_rect(data=effect.background, 
             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
@@ -179,10 +194,12 @@ regen.dyn.effect %>%
   facet_grid(~name) +
   scale_x_reverse() +
   scale_fill_manual(name = "Interaction type",
-                    values = c("Dampening" = "#A1BE95", "Amplifying"="#F98866"),
+                    values = c("Dampening" = "darkseagreen3", "Amplifying"="cornflowerblue"),
                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
   labs(x = "Simulated regeneration rate [Mean number of tress recruited per ha yr^-1]\nRate based on all 80 simulation years",
-       y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
+       y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline",
+       col="Landscape") +
+  scale_color_manual(values=colors.landscape) +
   theme_bw()
 dev.off()
 
@@ -195,8 +212,9 @@ dev.off()
 #               group_by(landscape) %>% 
 #               summarise(regen.dyn_ref = mean(regen.dyn_baseline)) %>% 
 #               dplyr::select(landscape, regen.dyn_ref), multiple = "all", by = "landscape") %>% 
-#   mutate(regen.change = (regen.dyn_baseline - regen.dyn_ref)/regen.dyn_ref,
-#          landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
+#   mutate(regen.change = (regen.dyn_baseline - regen.dyn_ref)/regen.dyn_ref
+# landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+#        landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
 #   ggplot() +
 #   geom_rect(data=effect.background, 
 #             aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, fill=interaction), alpha = 0.3) +
@@ -208,7 +226,7 @@ dev.off()
 #   scale_x_reverse() +
 #   facet_grid(landscape~name) +
 #   scale_fill_manual(name = "Interaction type",
-#                     values = c("Dampening" = "#018571", "Amplifying"="#143d59"),
+#                      values = c("Dampening" = "darkseagreen3", "Amplifying"="cornflowerblue")
 #                     labels = c("Dampening:\nless landscape broken", "Amplifying:\nmore landscape broken")) +
 #   labs(x = "Percent change in disturbance rate [%]\nRates based on only the first 10 simulation years",
 #        y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline") +
