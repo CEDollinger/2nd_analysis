@@ -58,7 +58,8 @@ knitr::opts_chunk$set(echo = TRUE)
 Process levels: reference * c(2, 5, 10); special case fecundity: reference / c(2,5,10)
 
 
-# Results (13.05.2024)
+# Results 
+(simulations runs from 13.05.2024)
 
 ## Q1: How do the 4 investigated processes influence system breakage? Who is most important? 
 
@@ -75,7 +76,7 @@ All other processes kept at baseline level
 >
 > Basically only signals visible in Grand Teton
 >
-> Structural change and forest loss buffered up to a doubling of disturbance parameters, then strong decrease
+> Structural change and forest loss buffered up to a doubling of disturbance parameters, then strong increase
 >
 > Composition change seems to stabilize after a 5-fold increase (no difference between x5 and x10)
 >

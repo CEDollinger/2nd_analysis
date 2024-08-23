@@ -6,6 +6,64 @@
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 
 ### baseline climate ####
+
+# all landscapes averaged
+png("results/figures/Q1_singleProcesses.png", res=200,
+    height=1200, width=2000)
+bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+  filter(year==80, climate=="baseline") %>% 
+  filter(freq==1, fecundity==100, browsing==1) %>% 
+  pivot_longer(cols=10:12) %>% 
+  group_by(landscape, climate, size, name, rep) %>% 
+  summarise(value=mean(value)) %>% ungroup() %>% 
+  group_by(climate, size, name, rep) %>% 
+  summarise(value=mean(value)) %>% ungroup() %>% 
+  rename(mod = size, 'Disturbance size'=value) %>% 
+  full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+              filter(year==80, climate=="baseline") %>% 
+              filter(size==1, fecundity==100, browsing==1) %>% 
+              pivot_longer(cols=10:12) %>% 
+              group_by(landscape, climate, freq, name) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              group_by(climate, freq, name) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              rename(mod=freq, 'Disturbance frequency'=value)) %>% 
+  full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+              filter(year==80, climate=="baseline") %>% 
+              filter(size==1, freq==1, browsing==1) %>% 
+              pivot_longer(cols=10:12) %>% 
+              group_by(landscape, climate, fecundity, name) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              group_by(climate, fecundity, name) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              rename(mod=fecundity, 'Seed availability'=value) %>% 
+              mutate(mod=case_match(mod, "100"~"1", "50"~"2", "20"~"5", "10"~"10"))) %>% 
+  full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+              filter(year==80, climate=="baseline") %>% 
+              filter(size==1, freq==1, fecundity==100) %>% 
+              pivot_longer(cols=10:12) %>% 
+              group_by(landscape, climate, browsing, name) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              group_by(climate, browsing, name) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              rename(mod=browsing, 'Sapling height growth'=value)) %>%
+  pivot_longer(cols=5:8, names_to = "process") %>% 
+  mutate(value=100-value*100) %>% 
+  group_by(name, process, mod) %>% 
+  summarise(sd=sd(value), value=mean(value)) %>% ungroup() %>%
+  ggplot(aes(x=as.numeric(mod), y=value, col=process)) +
+  # geom_ribbon(aes(ymin=value-sd, ymax=value+sd, fill=process), col="white", alpha=0.3) +
+  geom_line(linewidth=1, alpha=1, show.legend=T) +
+  facet_wrap(~name) +
+  labs(y="Landscape changed [%]", x="Disturbance size modification", col="Landscape") +
+  scale_x_continuous(labels=c("Reference", "*2", "*5", "*10"), breaks=c(0,2,5,10)) +
+  scale_color_manual(values=c('Disturbance size' = "#b35806",
+                              'Disturbance frequency' = "#f46d43",
+                              'Seed availability'= "#542788",
+                              'Sapling height growth'="#2166ac")) +
+  theme_bw()
+dev.off()
+
 # disturbance
 mean.size <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(year==80, climate=="baseline") %>% 
@@ -361,7 +419,7 @@ pie.dist.fc <- function(var) {
     ggplot(aes(x=0, y=value*100, fill=name)) +
     geom_bar(stat="identity") +
     geom_text(aes(y=1, label = sprintf('%.1f', value*100))) +
-    facet_grid(rows=vars(size), cols=vars(freq), as.table = F, switch = "both") +
+    facet_grid(rows=vars(size), cols=vars(freq), as.table = F, switch = "y") +
     coord_polar("x") + # "y": pie chart but all same size, "x": weird drop pattern chart, but different sizes
     labs(fill="", x="", y="") +
     ylim(0,55) + # max value: 0.55
@@ -369,7 +427,7 @@ pie.dist.fc <- function(var) {
     theme_bw() +
     theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
           axis.text.x=element_blank(), axis.text.y=element_blank(),
-          legend.position = "top") 
+          legend.position = "bottom") 
 }; pie.dist.ls <- lapply(names(response.colors), pie.dist.fc)
 
 png("results/figures/Q1_pie_disturbance.png", res=200,
@@ -387,8 +445,8 @@ pie.regen.fc <- function(var) {
     filter(name == var) %>%
     ggplot(aes(x=0, y=value*100, fill=name)) +
     geom_bar(stat="identity") +
-    geom_text(aes(y=1,label=label = sprintf('%.1f', value*100))) +
-    facet_grid(rows=vars(fecundity), cols=vars(browsing), as.table = F, switch = "both") +
+    geom_text(aes(y=1,label= sprintf('%.1f', value*100))) +
+    facet_grid(rows=vars(fecundity), cols=vars(browsing), as.table = F, switch = "y") +
     coord_polar("x") + 
     labs(fill="", x="", y="") +
     ylim(0,55) + # max value: 0.55
@@ -396,7 +454,7 @@ pie.regen.fc <- function(var) {
     theme_bw() +
     theme(axis.ticks.x=element_blank(), axis.ticks.y=element_blank(),
           axis.text.x=element_blank(), axis.text.y=element_blank(),
-          legend.position = "top") 
+          legend.position = "bottom") 
 }; pie.regen.ls <- lapply(names(response.colors), pie.regen.fc)
 
 png("results/figures/Q1_pie_regeneration.png", res=200,
@@ -445,7 +503,7 @@ var <- "1. Structure\nBasal area decreased by >50 % from reference"
 Landscape <- "stoko"
 i<-1
 for (i in 1:3) {
-    
+  
   # disturbance processes
   max.value <- pie.dist.ls.df %>% 
     filter(landscape == landscapes[i]) %>% 
@@ -515,17 +573,67 @@ for (i in 1:3) {
 
 # Response line plots ####
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
+patches <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
+                     readRDS("results/datasets/patch_grte_backup.RDATA"),
+                     readRDS("results/datasets/patch_stoko_backup.RDATA"))
 
-patch.df <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
-                      readRDS("results/datasets/patch_grte_backup.RDATA"),
-                      readRDS("results/datasets/patch_stoko_backup.RDATA")) %>% 
-  group_by(landscape, climate, rep, size, freq, browsing, fecundity, year) %>% # don't group by agent
-  summarise(area_disturbed = sum(n_cells)) %>% 
+patchlist <- bind_rows(readRDS("results/datasets/patchlist_bgd.RDATA"),
+                       readRDS("results/datasets/patchlist_grte.RDATA"),
+                       readRDS("results/datasets/patchlist_stoko.RDATA"))
+
+forest.ha.df <- patches %>% 
+  inner_join(patchlist) %>% 
+  inner_join(areas)
+
+forest.ha.df %>%
+  # filter(agent %in% c("wind", "fire")) %>% # only unspecific agents 
+  mutate(decade = (floor((year-1)/10))*10+10) %>%
+  mutate(pct=n_cells/n_cells_soll) %>% 
+  group_by(decade, landscape, climate, size, freq, browsing, fecundity, rep) %>% 
+  summarise(area=mean(area),
+            forest.ha=mean(pct)*mean(area),
+            # calculate weighted.mean -> bigger patches should be more reliable
+            # forest.ha=weighted.mean(pct, n_cells)*mean(area), 
+            n_patches = length(unique(patchID))) %>% ungroup() %>% 
+  # shiretoko: set to full area if only few patches occurred that year
+  # mutate(forest.ha = ifelse(n_patches < 10, area, forest.ha)) %>% ungroup() %>% 
   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
-  full_join(areas, by="landscape") 
+  full_join(data.frame(year = 1:80, decade = (floor((c(1:80)-1)/10))*10+10)) %>% 
+  ggplot(aes(x=decade, y=forest.ha, group=paste(climate, size, freq, browsing, fecundity,rep))) +
+  geom_line(linewidth=0.2, alpha=0.2) +
+  geom_hline(aes(yintercept=area), col="red") +
+  facet_wrap(~landscape, scales="free_y") +
+  theme_bw()
+
+bind_rows(overtime.ls[["stoko"]], overtime.ls[["bgd"]], overtime.ls[["grte"]]) %>% 
+  full_join(areas) %>% 
+  ggplot(aes(x=year, y=`3. Remaining forest\nStem density dropping below 50 trees/ha`*area, 
+             group=paste(climate, size, freq, browsing, fecundity,rep))) +
+  geom_line(linewidth=0.2, alpha=0.2) +
+  geom_hline(aes(yintercept=area), col="red") +
+  facet_wrap(~landscape, scales="free_y") +
+  labs(y="Forested area") +
+  theme_bw()
+
+
+head(forest.ha.df)
+
+patch.df <- patches %>% 
+  filter(killed_ba > 0) %>% 
+  group_by(landscape, climate, rep, size, freq, browsing, fecundity, year) %>% # don't group by agent
+  summarise(area_disturbed = sum(n_cells)) %>%
+  # find out how much area is still forested per year
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
+  inner_join(forest.ha.df) %>% 
+  # dplyr::select(-decade) %>% 
+  mutate(dist.rate = area_disturbed/forest.ha) # already in % (because area_disturbed in 100 m^2, forest.ha in ha)
+head(patch.df)
 
 regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
                       readRDS("results/datasets/regen_grte_backup.RDATA"),
@@ -534,15 +642,22 @@ regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
-  full_join(areas, by="landscape") 
+  inner_join(forest.ha.df) %>% 
+  mutate(correction = area/forest.ha, 
+         recruited_mean = recruited_mean * correction)
+head(regen.df)
+
+rm(patches, patchlist, forest.ha.df)
+
 
 # disturbance and regeneration rate per year
-png("results/figures/Q0_disturbanceRate_10x10.png", res=200,
+png("results/figures/Q0_disturbanceRate_10x10_newMethod.png", res=200,
     height=1300, width=2000)
 patch.df %>% 
-  filter(climate=="baseline", size==10, freq==10, browsing==1, fecundity==100) %>% 
+  mutate(dist.rate = ifelse(dist.rate > 100, 100, dist.rate)) %>% 
+  filter(climate=="baseline", size==2, freq==2, browsing==1, fecundity==100) %>% 
   group_by(year, landscape, rep) %>% 
-  summarise(dist.rate = mean(area_disturbed/area)) %>% ungroup() %>% 
+  summarise(dist.rate = mean(dist.rate)) %>% ungroup() %>% 
   mutate(landscape=factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
   ggplot(aes(x=year, y=dist.rate, group=rep)) +
   geom_line(linewidth=0.2) +
@@ -599,23 +714,23 @@ ranges.dist <- c(range(dist.dyn.df[dist.dyn.df$landscape=="stoko", "dist.dyn"]),
 png("results/figures/Q1_responseLine_disturbanceRate_10yrs.png", res=200,
     height=1300, width=2000)
 dist.dyn.df %>% 
-  ggplot(aes(x = dist.dyn, y = value*100, col = name)) +
+  ggplot(aes(x = dist.dyn, y = 100-value*100, col = name)) +
   geom_point(size = 0.1, alpha = 0.5) +
   geom_smooth(method = "loess", se = FALSE) +
   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, # year 1:80 *0.5, 1:10 *2, 1:5 *5, 1:2 *10
                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
   ylim(0, 100) +
   scale_color_manual(values=response.colors) +
-  labs(y = "Landscape unchanged [%]", col = "Response",
+  labs(y = "Landscape changed [%]", col = "Response",
        x = paste0("Simulated disturbance rate [% yr^-1]\nRate based on only the first ", unique(dist.dyn.df$n_year)," simulation years\nAxis log10-transformed")) +
   theme_bw() +
   coord_cartesian(clip="off") +
-  annotate("text", x = mean(ranges.dist[1:2]), y = 55, label = "Shiretoko") + 
+  annotate("text", x = mean(ranges.dist[1:2]), y = 100-55, label = "Shiretoko") + 
   annotate("segment", x = ranges.dist[1], xend = ranges.dist[2], y = 50, yend = 50) +
-  annotate("text", x = mean(ranges.dist[3:4]), y = 45, label = "Berchtesgaden") + 
-  annotate("segment", x = ranges.dist[3], xend = ranges.dist[4], y = 40, yend = 40) +
-  annotate("text", x = mean(ranges.dist[5:6]), y = 35, label = "Grand Teton") + 
-  annotate("segment", x = ranges.dist[5], xend = ranges.dist[6], y = 30, yend = 30) +
+  annotate("text", x = mean(ranges.dist[3:4]), y = 100-45, label = "Berchtesgaden") + 
+  annotate("segment", x = ranges.dist[3], xend = ranges.dist[4], y = 60, yend = 60) +
+  annotate("text", x = mean(ranges.dist[5:6]), y = 100-35, label = "Grand Teton") + 
+  annotate("segment", x = ranges.dist[5], xend = ranges.dist[6], y = 70, yend = 70) +
   theme(legend.position = "top")
 dev.off()
 
@@ -664,22 +779,22 @@ ranges.regen <- c(range(regen.dyn.df[regen.dyn.df$landscape=="stoko", "regen.dyn
 png("results/figures/Q1_responseLine_regenerationRate_80yrs.png", res=200,
     height=1300, width=2000)
 regen.dyn.df %>% 
-  ggplot(aes(x = regen.dyn, y = value*100, col = name)) +
+  ggplot(aes(x = regen.dyn, y = 100-value*100, col = name)) +
   geom_point(size = 0.1, alpha = 0.5) +
   geom_smooth(method = "loess", se = FALSE) +
   ylim(0, 100) +
   scale_x_reverse() +
   scale_color_manual(values=response.colors) +
-  labs(y = "Landscape unchanged [%]", col = "Response",
+  labs(y = "Landscape changed [%]", col = "Response",
        x = paste0("Simulated regeneration rate [Mean number of tress recruited per ha yr^-1]\nRate based on the first ", unique(regen.dyn.df$n_year)," simulation years")) +
   theme_bw() +
   coord_cartesian(clip="off") +
-  annotate("text", x = mean(ranges.regen[1:2]), y = 55, label = "Shiretoko") + 
+  annotate("text", x = mean(ranges.regen[1:2]), y = 45, label = "Shiretoko") + 
   annotate("segment", x = ranges.regen[1], xend = ranges.regen[2], y = 50, yend = 50) +
-  annotate("text", x = mean(ranges.regen[3:4]), y = 45, label = "Berchtesgaden") + 
-  annotate("segment", x = ranges.regen[3], xend = ranges.regen[4], y = 40, yend = 40) +
-  annotate("text", x = mean(ranges.regen[5:6]), y = 35, label = "Grand Teton") + 
-  annotate("segment", x = ranges.regen[5], xend = ranges.regen[6], y = 30, yend = 30) +
+  annotate("text", x = mean(ranges.regen[3:4]), y = 55, label = "Berchtesgaden") + 
+  annotate("segment", x = ranges.regen[3], xend = ranges.regen[4], y = 60, yend = 60) +
+  annotate("text", x = mean(ranges.regen[5:6]), y = 65, label = "Grand Teton") + 
+  annotate("segment", x = ranges.regen[5], xend = ranges.regen[6], y = 70, yend = 70) +
   theme(legend.position = "top")
 dev.off()
 
