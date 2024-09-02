@@ -64,64 +64,59 @@ singleProcess.df %>%
 dev.off()
 rm(singleProcess.df, singleProcess.mean)
 
-# Surface plots (formerly response line plots) ####
+# Continuous rate plots (formerly response line plots) ####
 
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 patches <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
                      readRDS("results/datasets/patch_grte_backup.RDATA"),
-                     readRDS("results/datasets/patch_stoko_backup.RDATA")); 0+1
+                     readRDS("results/datasets/patch_stoko_backup.RDATA")); head(patches)
 
 patchlist <- bind_rows(readRDS("results/datasets/patchlist_bgd.RDATA"),
                        readRDS("results/datasets/patchlist_grte.RDATA"),
-                       readRDS("results/datasets/patchlist_stoko.RDATA")); 1+1
+                       readRDS("results/datasets/patchlist_stoko.RDATA")); head(patchlist)
 
 # actually forested area: correction factor for GRTE
 forest.ha.df <- patches %>% 
   inner_join(patchlist) %>% 
   inner_join(areas) %>%
   # filter(agent %in% c("wind", "fire")) %>% # only unspecific agents 
-  # mutate(decade = (floor((year-1)/10))*10+10) %>%
-  mutate(pct=n_cells/n_cells_soll) %>% 
+  mutate(pct=n_cells/n_cells_soll) %>% # what pct of targeted cells was actually disturbed? (proxy for forested area)
   group_by(year, landscape, climate, size, freq, browsing, fecundity, rep) %>% 
   summarise(area=mean(area),
-            # forest.ha=mean(pct)*mean(area),
             # calculate weighted.mean -> bigger patches should be more reliable
-            forest.ha=weighted.mean(pct, n_cells)*mean(area), 
+            # forest.ha=weighted.mean(pct, n_cells)*mean(area), # mean of pct disturbed multiplied by landscape area 
+            forest.ha = mean(pct)*mean(area), 
             n_patches = length(unique(patchID))) %>% ungroup() %>% 
-  # berchtesgaden and shiretoko: set to full area 
-  mutate(forest.ha = ifelse(landscape %in% c("bgd", "stoko"), area, forest.ha)) %>% ungroup() %>% 
   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) 
-# %>% full_join(data.frame(year = 1:80, decade = (floor((c(1:80)-1)/10))*10+10)); 2+1
-head(forest.ha.df)
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+         forest.ha = ifelse(landscape == "stoko", area, forest.ha), # only apply this correction for GRTE + BGD
+         forest.ha = ifelse(is.na(forest.ha), area, forest.ha)); head(forest.ha.df); summary(forest.ha.df)
 
 patch.df <- patches %>% 
   filter(killed_ba > 0) %>% 
   group_by(landscape, climate, rep, size, freq, browsing, fecundity, year) %>% # don't group by agent
   summarise(area_disturbed = sum(n_cells)) %>%
-  # find out how much area is still forested per year
   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
   inner_join(forest.ha.df) %>% 
-  # dplyr::select(-decade) %>% 
-  mutate(dist.rate = area_disturbed/forest.ha) # already in % (because area_disturbed in 100 m^2, forest.ha in ha)
-head(patch.df); unique(patch.df$climate)
-summary(patch.df)
+  mutate(dist.rate = area_disturbed/forest.ha, # already in % (because area_disturbed in 100 m^2, forest.ha in ha
+         dist.rate = ifelse(dist.rate > 100, 100, dist.rate)) %>% 
+  mutate(keep = ifelse(forest.ha > area*0.1, "yes", "no")) %>% # exclude years where forest area drops below 10%
+  filter(keep == "yes"); summary(patch.df) 
 # combine with vegetation data
 dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(year==80) %>% dplyr::select(-year) %>% 
   full_join(patch.df %>% 
-              filter(year %in% 1:10) %>% 
-              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% # take mean over all simulation years
               summarise(n_year = length(unique(year)),
                         dist.dyn = mean(dist.rate)), 
             by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>% 
   pivot_longer(9:11) %>% 
-  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn))
+  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn)); summary(dist.dyn.df)
 
 # regeneration rate
 regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
@@ -133,24 +128,29 @@ regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
   inner_join(forest.ha.df) %>% 
   mutate(correction = area/forest.ha, 
-         recruited_mean = recruited_mean * correction)
+         recruited_mean = recruited_mean * correction); summary(regen.df)
 head(regen.df)
 # combine with vegetation data
 regen.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(year==80) %>% dplyr::select(-year) %>% 
   full_join(regen.df %>% 
-              filter(year %in% 1:80) %>% 
               group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
               summarise(regen.dyn = mean(recruited_mean),
                         n_year = length(unique(year))), 
             by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>% 
   pivot_longer(9:11) %>% 
-  mutate(regen.dyn = ifelse(is.na(regen.dyn), 0, regen.dyn)) 
+  mutate(regen.dyn = ifelse(is.na(regen.dyn), 0, 
+                            ifelse(is.infinite(regen.dyn), 0, regen.dyn))) 
+
+dyn.df <- dist.dyn.df %>% 
+  dplyr::select(-n_year) %>% 
+  full_join(regen.dyn.df) %>% 
+  drop_na() # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
 
 rm(patches, patchlist, forest.ha.df)
 
 
-# disturbance and regeneration rate per year
+# disturbance rate per year
 png("results/figures/Q0_disturbanceRate_5x5_newMethod.png", res=200,
     height=1300, width=2000)
 patch.df %>% 
@@ -177,6 +177,25 @@ patch.df %>%
 
 
 # regeneration rate
+regen.plot <- regen.df %>% 
+  filter(climate=="baseline", size==1, freq==1, browsing==5, fecundity==20) %>% 
+  group_by(year, landscape, rep) %>% 
+  summarise(regen.rate = mean(recruited_mean)) %>% ungroup() %>% 
+  mutate(landscape=factor(landscape, levels=c("stoko", "bgd", "grte"))) 
+regen.plot.mean <- regen.plot %>% group_by(landscape) %>% summarise(regen.rate = mean(regen.rate)) %>% ungroup()
+png("results/figures/Q0_regenerationRate_5x5_newMethod.png", res=200,
+    height=1300, width=2000)
+regen.plot %>% 
+  ggplot(aes(x=year, y=regen.rate, group=rep)) +
+  geom_line(linewidth=0.2) +
+  geom_hline(data=regen.plot.mean, aes(yintercept=regen.rate)) +
+  facet_wrap(~landscape) +
+  labs(x="Sim. year", y="Regeneration rate [mean n trees recruited ha^-1 yr^-1]", 
+       title="Simulated regeneration rates\nbaseline size*1 freq*1 browsing*5 fecundity*20 reps 1:5") +
+  theme_bw()
+dev.off()
+rm(regen.plot, regen.plot.mean)
+
 png("results/figures/Q0_regenerationRate_year40.png", res=200,
     height=1300, width=2000)
 regen.df %>% 
@@ -197,70 +216,59 @@ regen.df %>%
   theme_bw()
 dev.off()
 
-### 3D: both rates ####
+
+### Heat map ####
+
+
 library(plotly)
-library(reticulate); reticulate::use_miniconda('r-reticulate') # to save plotly graphs as png
+# https://plotly.com/r/contour-plots/
+library(stringr)
+library(reshape2)
 
-response.list <- list(tibble(), tibble(), tibble()); names(response.list) <- names(response.colors); surface.list <- list(response.list, response.list)
-names(surface.list) <- c("baseline", "hotdry"); rm(response.list)
-# loop for filling list with all 6 combinations (2 climates x 3 responses)
-clim <- "baseline"; resp <- names(response.colors)[1]
-for (clim in names(surface.list)) {
-  for (resp in names(response.colors)) {
-    surface.list[[clim]][[resp]] <- dist.dyn.df %>% dplyr::select(-n_year) %>% full_join(regen.dyn.df %>% dplyr::select(-n_year)) %>% drop_na() %>% 
-      filter(climate==clim, 
-             name==resp) %>% 
-      mutate(value=100-value*100) %>% 
-      dplyr::select(dist.dyn, regen.dyn, value) %>% 
-      distinct()
-  }
-}
+a <- dyn.df %>% filter(name == names(response.colors)[1]) %>% 
+  dplyr::select(dist.dyn, regen.dyn, value) %>% 
+  mutate(value=100-value*100, dist.dyn = log10(dist.dyn)); summary(a) # dist.dyn = log10(dist.dyn)
 
+# fit loess model and predict
+data.loess <- loess(value ~ dist.dyn * regen.dyn, data = a)
+# Create a sequence of incrementally increasing (by 0.3 units) values for both wt and hp
+xgrid <-  seq(min(a$dist.dyn), max(a$dist.dyn), 0.3)
+ygrid <-  seq(min(a$regen.dyn), max(a$regen.dyn), 0.3)
+# Generate a dataframe with every possible combination of wt and hp
+data.fit <-  expand.grid(dist.dyn = xgrid, regen.dyn = ygrid)
+# Feed the dataframe into the loess model and receive a matrix output with estimates of acceleration for each combination of wt and hp
+mtrx3d <-  predict(data.loess, newdata = data.fit)
+# Abbreviated display of final matrix
+mtrx3d[1:4, 1:4]
+mtrx.melt <- melt(mtrx3d, id.vars = c('dist.dyn', 'regen.dyn'), measure.vars = 'value')
+names(mtrx.melt) <- c('dist.dyn', 'regen.dyn', 'value')
+# Return data to numeric form
+mtrx.melt$dist.dyn <- as.numeric(str_sub(mtrx.melt$dist.dyn, str_locate(mtrx.melt$dist.dyn, '=')[1,1] + 1))
+mtrx.melt$regen.dyn <-  as.numeric(str_sub(mtrx.melt$regen.dyn, str_locate(mtrx.melt$regen.dyn, '=')[1,1] + 1))
+mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100, value))
 
-# raw data
-plot_ly(x = ~surface.list[["baseline"]][[1]]$dist.dyn, y = ~surface.list[["baseline"]][[1]]$regen.dyn, 
-        z = ~surface.list[["baseline"]][[1]]$value, intensity = ~surface.list[["baseline"]][[1]]$value, type = 'mesh3d') %>%
-  layout(title = 'Raw data', 
-         scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
-                      zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
+plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~value, type = "contour") # "trial_loess_predictions.png"
 
-# lm model
-mod1 <- lm(surface.list[["baseline"]][[1]]$value ~ surface.list[["baseline"]][[1]]$dist.dyn + surface.list[["baseline"]][[1]]$regen.dyn)
-summary(mod1)
-disturbance_rate <-mod1$model[,1]; regeneration_rate <- mod1$model[,2]; structural_change <-mod1$fitted.values; plot_ly(
-  x = ~disturbance_rate, y = ~regeneration_rate, z = ~structural_change, intensity = ~structural_change, type = 'mesh3d') %>%
-  layout(title = 'Linear model', 
-         scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
-                      zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
-
-# loess model
-mod2 <- loess(surface.list[["baseline"]][[1]]$value ~ surface.list[["baseline"]][[1]]$dist.dyn + surface.list[["baseline"]][[1]]$regen.dyn)
-disturbance_rate <-mod2$x[,1]; regeneration_rate <- mod2$x[,2]; structural_change <-mod2$fitted
-p1 <- plot_ly(
-  x = ~disturbance_rate, y = ~regeneration_rate, z = ~structural_change, intensity = ~structural_change, type = 'mesh3d') %>%
-  layout(title = 'Loess model', 
-         scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
-                      zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
-reticulate::use_miniconda('r-reticulate')
-save_image(p1, file = "image.png")
+plot_ly(a, x = ~dist.dyn, y = ~regen.dyn, z = ~value) %>% 
+  add_histogram2d(zsmooth = "best") %>%
+  colorbar(title = "default") %>%
+  layout(xaxis = list(title = "default"))
 
 
-# loop for loess models
-clim <- "baseline"; resp <- 2
-for (clim in names(surface.list)) {
-  for (resp in 1:3) {
-    mod2 <- loess(surface.list[[clim]][[resp]]$value ~ surface.list[[clim]][[resp]]$dist.dyn + surface.list[[clim]][[resp]]$regen.dyn)
-    disturbance_rate <-mod2$x[,1]; regeneration_rate <- mod2$x[,2]; change <-mod2$fitted; change[change>100] <- 100; change[change<0] <- 0
-    p1 <- plot_ly(
-      x = ~disturbance_rate, y = ~regeneration_rate, z = ~change, intensity = ~change, type = 'mesh3d') %>%
-      layout(title = paste0(clim, " - ", names(response.colors)[resp], '\nLoess model'), 
-             scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
-                          zaxis = list(title = "Landscape changed [%]"), coloraxis = list(title = "this does NOT work (yet)")))
-    save_image(p1, file = paste0("results/figures/surface_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000)
-    rm(mod2, disturbance_rate, regeneration_rate, change, p1)
-  }
-}
-    
+png("results/figures/Q0_relationship_regenRate_distRate_indicators.png", res=200,
+    height=1300, width=2000)
+dyn.df %>% 
+  filter(climate=="baseline") %>% 
+  ggplot(aes(x=dist.dyn, y=regen.dyn, col=value)) +
+  geom_point(size=0.1) +
+  geom_smooth(method="loess", se=F) +
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2,
+                label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
+  facet_grid(~name) +
+  labs(x="Disturbance rate [based on all 80 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+  theme_bw()
+dev.off()  
+
 
 ### disturbance rate ####
 # overall mean disturbance rate on x-axis
@@ -268,15 +276,15 @@ dist.dyn.df$dist.dyn %>% summary() # chose sensible labels
 ranges.dist <- c(range(dist.dyn.df[dist.dyn.df$landscape=="stoko", "dist.dyn"]),
                  range(dist.dyn.df[dist.dyn.df$landscape=="bgd", "dist.dyn"]),
                  range(dist.dyn.df[dist.dyn.df$landscape=="grte", "dist.dyn"]))
-png("results/figures/Q1_responseLine_disturbanceRate_10yrs.png", res=200,
+png("results/figures/Q1_responseLine_disturbanceRate_80yrs.png", res=200,
     height=1300, width=2000)
 dist.dyn.df %>% 
   filter(climate == "baseline") %>% 
   ggplot(aes(x = dist.dyn, y = 100-value*100, col = name)) +
   geom_point(size = 0.1, alpha = 0.5) +
   geom_smooth(method = "loess", se = FALSE) +
-  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 25)*2, # year 1:80 *0.5, 1:10 *2, 1:5 *5, 1:2 *10
-                label = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 25)*2) +
+  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2, # year 1:80 *0.5, 1:10 *2, 1:5 *5, 1:2 *10
+                label = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2) +
   ylim(0, 100) +
   scale_color_manual(values=response.colors) +
   labs(y = "Landscape changed [%]", col = "Response",
@@ -293,7 +301,7 @@ dist.dyn.df %>%
 dev.off()
 
 # relative disturbance rate
-png("results/figures/Q1_responseLine_disturbanceRate_relative_10yrs.png", res=200,
+png("results/figures/Q1_responseLine_disturbanceRate_relative_80yrs.png", res=200,
     height=1300, width=2000)
 dist.dyn.df %>% 
   filter(climate=="baseline") %>% 
@@ -393,25 +401,6 @@ dev.off()
 
 ## Relationship dist and regen rate ####
 
-dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
-  filter(year==80) %>% dplyr::select(-year) %>% 
-  full_join(patch.df %>% 
-              filter(year %in% 1:10) %>% 
-              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
-              # mean yearly disturbance rate: area_disturbed to ha -> divide by landscape area -> convert to %
-              summarise(dist.dyn = mean(dist.rate)) , 
-            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%  
-  full_join(regen.df %>% 
-              filter(year %in% 1:80) %>% 
-              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
-              # mean yearly disturbance rate: area_disturbed to ha -> divide by landscape area -> convert to %
-              summarise(regen.dyn = mean(recruited_mean)), 
-            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape", "area")) %>% 
-  pivot_longer(9:11) %>% 
-  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn),
-         regen.dyn = ifelse(is.na(regen.dyn), 0, regen.dyn)) %>% 
-  drop_na() # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
-
 png("results/figures/Q0_relationship_regenRate_distRate.png", res=200,
     height=1300, width=2000)
 dyn.df %>% 
@@ -424,7 +413,7 @@ dyn.df %>%
   geom_point() +
   facet_grid(~landscape, scales="free") +
   # scale_y_reverse() +
-  labs(x="Disturbance rate [based on first 10 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+  labs(x="Disturbance rate [based on first 80 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
   theme_bw() +
   scale_color_manual(values=colors.landscape) +
   theme(legend.position = "none")
@@ -441,29 +430,79 @@ dyn.df %>%
   mutate(landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
          landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
   ggplot(aes(x=dist.dyn, y=regen.dyn, col=landscape)) +
-  geom_point(col="black") +
-  geom_smooth(linewidth=2) +
+  geom_point(col="black", size=0.7) +
+  geom_point(alpha=0.6, size=0.5) +
+  geom_smooth(linewidth=2, method="lm") +
   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
-  labs(x="Disturbance rate [based on first 10 yrs, % yr^-1]", col="Landscape",
+  labs(x="Disturbance rate [based on all 80 yrs, % yr^-1]", col="Landscape",
        y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
   scale_color_manual(values=colors.landscape) +
   theme_bw() 
 dev.off()
 
-png("results/figures/Q0_relationship_regenRate_distRate_indicators.png", res=200,
-    height=1300, width=2000)
-dyn.df %>% 
-  filter(climate=="baseline") %>% 
-  ggplot(aes(x=dist.dyn, y=regen.dyn, col=value)) +
-  geom_point(size=0.1) +
-  scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
-                label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
-  #scale_y_reverse() +
-  facet_grid(~name) +
-  labs(x="Disturbance rate [based on first 10 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
-  theme_bw()
-dev.off()  
+
+### Surface 3D: both rates ####
+library(plotly)
+library(reticulate); reticulate::use_miniconda('r-reticulate') # to save plotly graphs as png
+
+response.list <- list(tibble(), tibble(), tibble()); names(response.list) <- names(response.colors); surface.list <- list(response.list, response.list)
+names(surface.list) <- c("baseline", "hotdry"); rm(response.list)
+# loop for filling list with all 6 combinations (2 climates x 3 responses)
+clim <- "baseline"; resp <- names(response.colors)[1]
+for (clim in names(surface.list)) {
+  for (resp in names(response.colors)) {
+    surface.list[[clim]][[resp]] <- dist.dyn.df %>% dplyr::select(-n_year) %>% full_join(regen.dyn.df %>% dplyr::select(-n_year)) %>% drop_na() %>% 
+      filter(climate==clim, 
+             name==resp) %>% 
+      mutate(value=100-value*100) %>% 
+      dplyr::select(dist.dyn, regen.dyn, value) %>% 
+      distinct()
+  }
+}
+
+
+# raw data
+p <- plot_ly(x = ~surface.list[["baseline"]][[1]]$dist.dyn, y = ~surface.list[["baseline"]][[1]]$regen.dyn, 
+             z = ~surface.list[["baseline"]][[1]]$value, intensity = ~surface.list[["baseline"]][[1]]$value, type = 'mesh3d') %>%
+  layout(title = 'Raw data', 
+         scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+                      zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)"))); p
+save_image(p, file = paste0("results/figures/surface_1_baseline_rawData.png"), scale=1, width=1000, height=1000); rm(p)
+
+# lm model
+mod1 <- lm(surface.list[["baseline"]][[1]]$value ~ surface.list[["baseline"]][[1]]$dist.dyn + surface.list[["baseline"]][[1]]$regen.dyn)
+summary(mod1)
+disturbance_rate <-mod1$model[,1]; regeneration_rate <- mod1$model[,2]; structural_change <-mod1$fitted.values; plot_ly(
+  x = ~disturbance_rate, y = ~regeneration_rate, z = ~structural_change, intensity = ~structural_change, type = 'mesh3d') %>%
+  layout(title = 'Linear model', 
+         scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+                      zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
+
+# loess model
+mod2 <- loess(surface.list[["baseline"]][[1]]$value ~ surface.list[["baseline"]][[1]]$dist.dyn + surface.list[["baseline"]][[1]]$regen.dyn)
+disturbance_rate <-mod2$x[,1]; regeneration_rate <- mod2$x[,2]; structural_change <-mod2$fitted
+plot_ly(
+  x = ~disturbance_rate, y = ~regeneration_rate, z = ~structural_change, intensity = ~structural_change, type = 'mesh3d') %>%
+  layout(title = 'Loess model', 
+         scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+                      zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
+
+# loop for loess models
+clim <- "baseline"; resp <- 2
+for (clim in names(surface.list)) {
+  for (resp in 1:3) {
+    mod2 <- loess(surface.list[[clim]][[resp]]$value ~ surface.list[[clim]][[resp]]$dist.dyn + surface.list[[clim]][[resp]]$regen.dyn)
+    disturbance_rate <-mod2$x[,1]; regeneration_rate <- mod2$x[,2]; change <-mod2$fitted; change[change>100] <- 100; change[change<0] <- 0
+    p1 <- plot_ly(
+      x = ~disturbance_rate, y = ~regeneration_rate, z = ~change, intensity = ~change, type = 'mesh3d') %>%
+      layout(title = paste0(clim, " - ", names(response.colors)[resp], '\nLoess model'), 
+             scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+                          zaxis = list(title = "Landscape changed [%]"), coloraxis = list(title = "this does NOT work (yet)")))
+    save_image(p1, file = paste0("results/figures/surface_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000)
+    rm(mod2, disturbance_rate, regeneration_rate, change, p1)
+  }
+}
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

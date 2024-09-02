@@ -5,3 +5,4 @@ old_markdowns/
 *.html
 *.Rhistory
 *.RData
+.Rproj.user
