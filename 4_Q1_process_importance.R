@@ -91,7 +91,7 @@ forest.ha.df <- patches %>%
          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
-         forest.ha = ifelse(landscape == "stoko", area, forest.ha), # only apply this correction for GRTE + BGD
+         forest.ha = ifelse(landscape != "grte", area, forest.ha), # only apply this correction for GRTE
          forest.ha = ifelse(is.na(forest.ha), area, forest.ha)); head(forest.ha.df); summary(forest.ha.df)
 
 patch.df <- patches %>% 
@@ -145,7 +145,7 @@ regen.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.l
 dyn.df <- dist.dyn.df %>% 
   dplyr::select(-n_year) %>% 
   full_join(regen.dyn.df) %>% 
-  drop_na() # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
+  drop_na(); unique(dyn.df$climate) # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
 
 rm(patches, patchlist, forest.ha.df)
 
@@ -169,11 +169,6 @@ dev.off()
 # disturbance rate over full sim. period in grte: low (max ~4%)
 # explanation: very little disturbances possible in later simulation years (no forest left to be disturbed) 
 # -> calculate disturbance rate only based on first 5-10 simulation years?
-
-
-patch.df %>% 
-  mutate(dist.rate = ifelse(dist.rate > 100, 100, dist.rate)) %>% 
-  filter(climate=="baseline", size==10, freq==10, browsing==1, fecundity==100, landscape=="grte", year>10) 
 
 
 # regeneration rate
@@ -217,20 +212,25 @@ regen.df %>%
 dev.off()
 
 
-### Heat map ####
-
-
+### Contour map ####
 library(plotly)
 # https://plotly.com/r/contour-plots/
 library(stringr)
 library(reshape2)
 
-a <- dyn.df %>% filter(name == names(response.colors)[1]) %>% 
+a <- dyn.df %>% 
+  filter(name == names(response.colors)[1], 
+         climate=="baseline") %>% 
   dplyr::select(dist.dyn, regen.dyn, value) %>% 
   mutate(value=100-value*100, dist.dyn = log10(dist.dyn)); summary(a) # dist.dyn = log10(dist.dyn)
 
-# fit loess model and predict
+# beta regression? https://cran.r-project.org/web/packages/betareg/betareg.pdf
+gam::gam()
+
+
+#### fit loess model and predict ####
 data.loess <- loess(value ~ dist.dyn * regen.dyn, data = a)
+summary(data.loess)
 # Create a sequence of incrementally increasing (by 0.3 units) values for both wt and hp
 xgrid <-  seq(min(a$dist.dyn), max(a$dist.dyn), 0.3)
 ygrid <-  seq(min(a$regen.dyn), max(a$regen.dyn), 0.3)
@@ -245,16 +245,110 @@ names(mtrx.melt) <- c('dist.dyn', 'regen.dyn', 'value')
 # Return data to numeric form
 mtrx.melt$dist.dyn <- as.numeric(str_sub(mtrx.melt$dist.dyn, str_locate(mtrx.melt$dist.dyn, '=')[1,1] + 1))
 mtrx.melt$regen.dyn <-  as.numeric(str_sub(mtrx.melt$regen.dyn, str_locate(mtrx.melt$regen.dyn, '=')[1,1] + 1))
-mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100, value))
-
+mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100, 
+                                                 ifelse(value < 0, 0, value)))
 plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~value, type = "contour") # "trial_loess_predictions.png"
 
-plot_ly(a, x = ~dist.dyn, y = ~regen.dyn, z = ~value) %>% 
-  add_histogram2d(zsmooth = "best") %>%
-  colorbar(title = "default") %>%
-  layout(xaxis = list(title = "default"))
+i<-1; clim<-"baseline"
+for (clim in c("baseline", "hotdry")) {
+  for (i in 1:3) {
+    a <- dyn.df %>% 
+      filter(name == names(response.colors)[i], 
+             climate==clim) %>% 
+      dplyr::select(dist.dyn, regen.dyn, value) %>% 
+      mutate(value=100-value*100, dist.dyn = log10(dist.dyn))
+    print(summary(a))
+    
+    #### fit loess model and predict ####
+    data.loess <- loess(value ~ dist.dyn * regen.dyn, data = a)
+    # Create a sequence of incrementally increasing (by 0.3 units) values for both wt and hp
+    xgrid <-  seq(min(a$dist.dyn), max(a$dist.dyn), 0.3)
+    ygrid <-  seq(min(a$regen.dyn), max(a$regen.dyn), 0.3)
+    # Generate a dataframe with every possible combination of wt and hp
+    data.fit <-  expand.grid(dist.dyn = xgrid, regen.dyn = ygrid)
+    # Feed the dataframe into the loess model and receive a matrix output with estimates of acceleration for each combination of wt and hp
+    mtrx3d <-  predict(data.loess, newdata = data.fit)
+    # Abbreviated display of final matrix
+    mtrx3d[1:4, 1:4]
+    mtrx.melt <- melt(mtrx3d, id.vars = c('dist.dyn', 'regen.dyn'), measure.vars = 'value')
+    names(mtrx.melt) <- c('dist.dyn', 'regen.dyn', 'value')
+    # Return data to numeric form
+    mtrx.melt$dist.dyn <- as.numeric(str_sub(mtrx.melt$dist.dyn, str_locate(mtrx.melt$dist.dyn, '=')[1,1] + 1))
+    mtrx.melt$regen.dyn <-  as.numeric(str_sub(mtrx.melt$regen.dyn, str_locate(mtrx.melt$regen.dyn, '=')[1,1] + 1))
+    mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100, 
+                                                     ifelse(value < 0, 0, value)))
+    png(paste0("results/figures/Q1_contourPlot_loess_", i, "_", clim, ".png"), res=200,
+        height=1300, width=2000)
+    p <- ggplot2::ggplot(data = mtrx.melt, aes(x = dist.dyn, y = regen.dyn, fill = value)) +
+      ggplot2::geom_tile(alpha = 0.75) +
+      ggplot2::scale_fill_viridis_c(option = 'turbo', name = "Predicted response") +
+      ggplot2::geom_point(data = a, aes(x = dist.dyn, y = regen.dyn), color = 'white', size = 0.2, inherit.aes = FALSE) +
+      ggplot2::geom_contour(ggplot2::aes(z = value), color = 'black', linewidth = 0.75, linetype = 'dashed') +
+      ggplot2::labs(x = "Disturbance rate",
+                    y = "Regeneration rate",
+                    title = paste0(clim, " climate: ", names(response.colors)[i])) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(axis.title = ggplot2::element_text(size = 16),
+                     axis.text = ggplot2::element_text(size = 14),
+                     legend.title = ggplot2::element_text(size = 14, angle = 0),
+                     legend.text = ggplot2::element_text(size = 12),
+                     legend.position = 'bottom',
+                     legend.box = 'horizontal',
+                     legend.box.margin = ggplot2::margin(0, 0, 20, 0)); print(p)
+    dev.off(); rm(p, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d)
+  }
+}
 
+#### akima interpolation ####
+library(akima)
+# Perform interpolation
+interp_result <- with(a, akima::interp(x = dist.dyn, y = regen.dyn, z = value, 
+                                       duplicate = "mean", extrap = TRUE))
+# Convert the interpolated result into a data frame for ggplot
+interp_df <- with(interp_result, expand.grid(x = x, y = y))
+interp_df$z <- as.vector(interp_result$z)
+interp_df <- na.omit(interp_df)  # Remove any rows with NA values
+ggplot() +
+  geom_contour_filled(data=interp_df, aes(x = x, y = y, z = z)) +
+  geom_point(data=a, aes(x=dist.dyn, y=regen.dyn), col="white", size=0.2) +
+  labs(title = "Contour Plot of Interpolated Values",
+       x = "dist.dyn",
+       y = "regen.dyn",
+       fill = "Value") +
+  theme_minimal() #trial_interpolated_akima
 
+#### raw data ####
+# expand.grid(dist.dyn=a$dist.dyn, regen.dyn=a$regen.dyn) %>% 
+#   full_join(a) %>% 
+#   mutate(dist.dyn = round(dist.dyn, 2),
+#          regen.dyn = round(regen.dyn, 0)) %>% 
+#   group_by(dist.dyn, regen.dyn) %>% 
+#   summarise(value = mean(value, na.rm=T)) %>% ungroup() %>% 
+#   mutate(value = ifelse(is.na(value), -0.2, value)) %>% 
+#   ggplot(aes(x=dist.dyn, y=regen.dyn, z=value)) +
+#   # geom_contour(aes(colour = after_stat(level)), bins=10) +
+#   geom_contour_filled(binwidth = 20) +
+#   # geom_point(data=a.fil, col="black", size=0.2) +
+#   labs(title = "Contour Plot of Raw Values",
+#        x = "dist.dyn",
+#        y = "regen.dyn",
+#        fill = "Value") +
+#   theme_minimal() 
+
+a.fil <- a %>% filter(dist.dyn < quantile(dist.dyn, 1)); b <- a.fil; b$dist.dyn <- round(b$dist.dyn, 1); b$regen.dyn <- round(b$regen.dyn, 0)
+b %>% 
+  ggplot(aes(x=dist.dyn, y=regen.dyn, z=value)) +
+  # geom_contour(aes(colour = after_stat(level)), bins=10) +
+  geom_contour_filled(bins=5) +
+  geom_point(data=a.fil, col="black", size=0.2) +
+  scale_x_log10() +
+  labs(title = "Contour Plot of Raw Values",
+       x = "dist.dyn",
+       y = "regen.dyn",
+       fill = "Value") +
+  theme_minimal() 
+
+# really raw data, all responses
 png("results/figures/Q0_relationship_regenRate_distRate_indicators.png", res=200,
     height=1300, width=2000)
 dyn.df %>% 
@@ -268,6 +362,42 @@ dyn.df %>%
   labs(x="Disturbance rate [based on all 80 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
   theme_bw()
 dev.off()  
+
+### categorical regeneration rate ####
+
+i<-1
+for (clim in c("baseline", "hotdry")) {
+  for (i in 1:3) {
+    png(paste0("results/figures/Q1_responseLine_disturbanceRate_categorical_", i, "_", clim, ".png"), res=200,
+        height=1300, width=2000)
+    p <- dyn.df %>% 
+      filter(climate == clim,
+             name == names(response.colors)[i]) %>% 
+      mutate(regen.cat = ifelse(regen.dyn <= quantile(regen.dyn, 0.333), "low",
+                                ifelse(regen.dyn > quantile(regen.dyn, 0.333) & regen.dyn <= quantile(regen.dyn, 0.667), "intermediate",
+                                       ifelse(regen.dyn > quantile(regen.dyn, 0.667), "high", NA))),
+             regen.cat = factor(regen.cat, levels=c("low", "intermediate", "high"))) %>% 
+      ggplot(aes(x = dist.dyn, y = 100-value*100, col = regen.cat)) +
+      geom_point(size = 0.1, alpha = 0.2, col="black") +
+      geom_smooth(se = FALSE, method="loess") +
+      scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2, # year 1:80 *0.5, 1:10 *2, 1:5 *5, 1:2 *10
+                    label = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2) +
+      ylim(0, 100) +
+      labs(y = "Landscape changed [%]", col = "Regeneration rate", title=paste0(names(response.colors)[i]), 
+           x = paste0("Simulated disturbance rate [% yr^-1]\nAxis log10-transformed")) +
+      theme_bw() +
+      coord_cartesian(clip="off") +
+      annotate("text", x = mean(ranges.dist[1:2]), y = 100-55, label = "Shiretoko") + 
+      annotate("segment", x = ranges.dist[1], xend = ranges.dist[2], y = 50, yend = 50) +
+      annotate("text", x = mean(ranges.dist[3:4]), y = 100-45, label = "Berchtesgaden") + 
+      annotate("segment", x = ranges.dist[3], xend = ranges.dist[4], y = 60, yend = 60) +
+      annotate("text", x = mean(ranges.dist[5:6]), y = 100-35, label = "Grand Teton") + 
+      annotate("segment", x = ranges.dist[5], xend = ranges.dist[6], y = 70, yend = 70) +
+      theme(legend.position = "top")
+    print(p)
+    dev.off(); rm(p)
+  }
+}
 
 
 ### disturbance rate ####
@@ -299,6 +429,7 @@ dist.dyn.df %>%
   annotate("segment", x = ranges.dist[5], xend = ranges.dist[6], y = 70, yend = 70) +
   theme(legend.position = "top")
 dev.off()
+
 
 # relative disturbance rate
 png("results/figures/Q1_responseLine_disturbanceRate_relative_80yrs.png", res=200,
@@ -382,7 +513,7 @@ regen.dyn.df %>%
   mutate(regen.change = (regen.dyn - regen.dyn_ref)/regen.dyn_ref,
          landscape = factor(landscape, levels=c("stoko", "bgd", "grte"))) %>% 
   mutate(full.id = paste0(landscape, "_", identifier)) %>%
-  filter(full.id %ni% regenIncrease.id) %>%
+  # filter(full.id %ni% regenIncrease.id) %>%
   ggplot(aes(x = regen.change*100, y = 100-(value*100), col = name)) +
   geom_point(size = 0.1, alpha = 0.5) +
   geom_smooth(method = "loess", se = FALSE) +
