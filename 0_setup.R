@@ -12,7 +12,6 @@ options(dplyr.summarise.inform = FALSE, readr.show_col_types = FALSE)
 #setwd(dirname(rstudioapi::getActiveDocumentContext()$path)); getwd() # set wd to file location
 landscapes <- c("bgd", "grte", "stoko")
 vars <- c("size", "freq", "fecundity", "browsing")
-keep.stoko <- read_csv("raw_data/helper_files/keep.csv") %>% pull(keep)
 areas <- data.frame(area = c(8645, 42586, 35676), landscape=landscapes) # forested landscape area in ha, "bgd", "grte", "stoko"
 response.colors <- c("#1b9e77", "#7570b3", "#d95f02"); names(response.colors) <- c('1. Structure\nBasal area decreased by >50 % from reference',  '2. Composition\nDominant species changed from reference', '3. Remaining forest\nStem density dropping below 50 trees/ha')
 colors.landscape <- c("#009988", "#999933", "#882255")
@@ -77,16 +76,41 @@ helper.files[["stoko"]][["species"]] <- dbConnect(RSQLite::SQLite(),  dbname = "
   mutate(species.code = ifelse(species %in% common.species$stoko, species.code, 0))
 helper.files[["stoko"]][["env"]] <- read_delim("../project2ndStudy/projectTest_stoko/gis/environment_final.txt")
 
-rid.df <- data.frame() 
+rid.prelim <- data.frame(); keep.stoko <- read_csv("raw_data/helper_files/keep.csv") %>% pull(keep) 
 for (landscape in 1:3) {
   rid_i <- helper.files[[landscapes[landscape]]][["ru"]] %>% 
     terra::as.data.frame(., xy=T) %>% rename(rid=3) %>% 
     drop_na() %>% mutate(landscape = landscapes[landscape])
   if (landscape == 3) rid_i <- rid_i %>% filter(rid %in% keep.stoko)
-  rid.df <- bind_rows(rid.df, rid_i);rm(rid_i)
+  rid.prelim <- bind_rows(rid.prelim, rid_i); rm(rid_i)
 }; rm(keep.stoko)
 
-
+rid.df <- bind_rows(
+  
+  helper.files[["bgd"]][["elev"]]  %>% 
+    resample(., helper.files[["bgd"]][["ru"]] ) %>% 
+    as.data.frame(., xy=T) %>% 
+    rename(elevation = 3) %>% 
+    full_join(rid.prelim[rid.prelim$landscape=="bgd",]),
+  
+  helper.files[["stoko"]][["elev"]]  %>% 
+    resample(., helper.files[["stoko"]][["ru"]]) %>% 
+    as.data.frame(., xy=T) %>% 
+    rename(elevation = 3) %>% 
+    full_join(rid.prelim[rid.prelim$landscape=="stoko",]) %>%
+    filter(!is.na(rid)) %>% 
+    mutate(elevation = ifelse(is.na(elevation), 0, elevation)),
+  
+  helper.files[["grte"]][["elev"]]  %>% 
+    resample(., helper.files[["grte"]][["ru"]] ) %>% 
+    as.data.frame(., xy=T) %>% 
+    rename(elevation = 3) %>% 
+    full_join(rid.prelim[rid.prelim$landscape=="grte",]) %>% 
+    filter(!is.na(rid)) 
+) %>% 
+  group_by(landscape) %>% 
+  mutate(dist.treeline = max(elevation)-elevation) %>% 
+  ungroup(); summary(rid.df); nrow(rid.prelim); rm(rid.prelim)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # discarded

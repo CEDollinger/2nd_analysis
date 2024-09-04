@@ -592,7 +592,6 @@ for (clim in names(surface.list)) {
   }
 }
 
-
 # raw data
 p <- plot_ly(x = ~surface.list[["baseline"]][[1]]$dist.dyn, y = ~surface.list[["baseline"]][[1]]$regen.dyn, 
              z = ~surface.list[["baseline"]][[1]]$value, intensity = ~surface.list[["baseline"]][[1]]$value, type = 'mesh3d') %>%
@@ -623,6 +622,15 @@ plot_ly(
 clim <- "baseline"; resp <- 2
 for (clim in names(surface.list)) {
   for (resp in 1:3) {
+    # raw data
+    p <- plot_ly(x = ~surface.list[[clim]][[resp]]$dist.dyn, y = ~surface.list[[clim]][[resp]]$regen.dyn, 
+                 z = ~surface.list[[clim]][[resp]]$value, intensity = ~surface.list[[clim]][[resp]]$value, type = 'mesh3d') %>%
+      layout(title = paste0(clim, " - ", names(response.colors)[resp], '\nRaw data'),
+             scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+                          zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)"))); p
+    save_image(p, file = paste0("results/figures/surface_raw_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000); rm(p)
+    
+    # loess model
     mod2 <- loess(surface.list[[clim]][[resp]]$value ~ surface.list[[clim]][[resp]]$dist.dyn + surface.list[[clim]][[resp]]$regen.dyn)
     disturbance_rate <-mod2$x[,1]; regeneration_rate <- mod2$x[,2]; change <-mod2$fitted; change[change>100] <- 100; change[change<0] <- 0
     p1 <- plot_ly(
@@ -630,7 +638,7 @@ for (clim in names(surface.list)) {
       layout(title = paste0(clim, " - ", names(response.colors)[resp], '\nLoess model'), 
              scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
                           zaxis = list(title = "Landscape changed [%]"), coloraxis = list(title = "this does NOT work (yet)")))
-    save_image(p1, file = paste0("results/figures/surface_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000)
+    save_image(p1, file = paste0("results/figures/surface_loess_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000)
     rm(mod2, disturbance_rate, regeneration_rate, change, p1)
   }
 }
