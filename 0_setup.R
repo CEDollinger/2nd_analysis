@@ -8,6 +8,7 @@ library(RSQLite); library(dbplyr)
 library(terra)
 library(plotly)
 library(stringr)
+library(sf)
 library(reshape2)
 library(reticulate); reticulate::use_miniconda('r-reticulate') # to save plotly graphs as png
 library(scales)

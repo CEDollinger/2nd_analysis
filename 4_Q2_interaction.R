@@ -1,13 +1,34 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Q2: how do disturbances and regeneration interact? ##########################################################################################################
+# Q2: how do disturbances and regeneration interact? # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 dyn.df <- read_csv("results/datasets/dyn.df.csv")
 
+# text calculations ####
 
-# TO DOs
-## mask out missing data space
-## add hull around landscapes
+# hectare-years
+mean(c(8645, 42586, 35676))*7680*80
+# 17798553600
+
+# mean, min/max of percentage landscape changed
+dyn.df %>% 
+  filter(climate=="baseline") %>% 
+  dplyr::select(dist.dyn, regen.dyn, value, landscape, name) %>% 
+  mutate(value=100-value*100) %>% 
+  group_by(landscape, name) %>% 
+  summarise(mean=mean(value),
+            median=median(value),
+            max=max(value)) 
+
+# reference disturbance and regeneration rate
+dyn.df %>% 
+  filter(climate == "baseline", size == 1, freq == 1, fecundity == 100, browsing == 1) %>% 
+  group_by(landscape) %>% 
+  summarise(dist = mean(dist.dyn),
+            regen = mean(regen.dyn))
+
+  
+# Plot ####
 
 # Create a function to compute the convex hull for a set of points
 create_hull <- function(data) {
@@ -66,36 +87,46 @@ for (clim in c("baseline")) { #, "hotdry"
     mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100, 
                                                      ifelse(value < 0, 0, value))) %>% 
       rename(Change = value); head(mtrx.melt)
-    p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",
-                  colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21) %>% 
-      layout(title = names(response.colors)[i], 
+    p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",  contours = list(showlines = FALSE),
+                  colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
+      layout(#title = names(response.colors)[i], 
              xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+                          zerolinecolor=toRGB("grey93"),
                           ticktext = c(10^c(-3:1),100),
-                          tickvals = c(-3:1, log10(100))),
+                          tickvals = c(-3:1, log10(100)),
+                          titlefont = list(size = 50), tickfont = list(size = 50)),
              yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
-                          tickvals = c(1:5*10))) %>% 
-      colorbar(title="Change [%]"); p1
+                          tickvals = c(1:5*10),
+                          range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
+                          titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
+      colorbar(title="Change [%]",
+               titlefont = list(size = 50), tickfont = list(size = 50)); p1
     p2 <- p1 %>%
-      add_trace(data = hulls, x = ~dist.dyn, y = ~regen.dyn, 
+      add_trace(data = hulls, x = ~dist.dyn, y = ~regen.dyn,
                 mode = "lines", type = "scatter",
                 line = list(width = 2),  # Line width
                 color = ~factor(landscape),
                 colors="grey30",
                 # colors = c("#ffa214", "#7fff41", "#1d99f9"),
-                inherit=F, showlegend=F) %>% 
+                inherit=F, showlegend=F); p2
+    p3 <- p2 %>%
       add_text(data = hulls_geom, inherit=F,
                x = ~centroid_x, y = ~centroid_y, text = ~landscape,
                mode = "text", showlegend = FALSE, 
-               textfont = list(size = 20, bold=TRUE, color=toRGB("grey10"))); p2
-    if (i < 3) {
+               textfont = list(size = 26, bold=TRUE, color=toRGB("grey10"))); p3
+    if (i == 1) {
       save_image(p2, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
-                 width=900, height=700) 
-    } else {
+                 width=1900, height=1700) } 
+    if (i == 2) {
+      save_image(p2, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
+                width=1900, height=1700) 
+    } 
+    if (i == 3) {
       save_image(p2, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
-                 width=900, height=700) 
+                 width=1900, height=1700) 
     }
     
-    rm(p1, p2, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords)
+    rm(p1, p2, p3, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords)
   }
 }
 
@@ -105,88 +136,90 @@ for (clim in c("baseline")) { #, "hotdry"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ## create dyn.df ####
-# overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
-# patches <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
-#                      readRDS("results/datasets/patch_grte_backup.RDATA"),
-#                      readRDS("results/datasets/patch_stoko_backup.RDATA")); head(patches)
-# 
-# patchlist <- bind_rows(readRDS("results/datasets/patchlist_bgd.RDATA"),
-#                        readRDS("results/datasets/patchlist_grte.RDATA"),
-#                        readRDS("results/datasets/patchlist_stoko.RDATA")); head(patchlist)
-# 
-# # actually forested area: correction factor for GRTE
-# forest.ha.df <- patches %>% 
-#   inner_join(patchlist) %>% 
-#   inner_join(areas) %>%
-#   # filter(agent %in% c("wind", "fire")) %>% # only unspecific agents 
-#   mutate(pct=n_cells/n_cells_soll) %>% # what pct of targeted cells was actually disturbed? (proxy for forested area)
-#   group_by(year, landscape, climate, size, freq, browsing, fecundity, rep) %>% 
-#   summarise(area=mean(area),
-#             # calculate weighted.mean -> bigger patches should be more reliable
-#             # forest.ha=weighted.mean(pct, n_cells)*mean(area), # mean of pct disturbed multiplied by landscape area 
-#             forest.ha = mean(pct)*mean(area), 
-#             n_patches = length(unique(patchID))) %>% ungroup() %>% 
-#   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
-#          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
-#          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-#          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
-#          forest.ha = ifelse(landscape != "grte", area, forest.ha), # only apply this correction for GRTE
-#          forest.ha = ifelse(is.na(forest.ha), area, forest.ha)); head(forest.ha.df); summary(forest.ha.df)
-# 
-# patch.df <- patches %>% 
-#   filter(killed_ba > 0) %>% 
-#   group_by(landscape, climate, rep, size, freq, browsing, fecundity, year) %>% # don't group by agent
-#   summarise(area_disturbed = sum(n_cells)) %>%
-#   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
-#          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
-#          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-#          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
-#   inner_join(forest.ha.df) %>% 
-#   mutate(dist.rate = area_disturbed/forest.ha, # already in % (because area_disturbed in 100 m^2, forest.ha in ha
-#          dist.rate = ifelse(dist.rate > 100, 100, dist.rate)) %>% 
-#   mutate(keep = ifelse(forest.ha > area*0.1, "yes", "no")) %>% # exclude years where forest area drops below 10%
-#   filter(keep == "yes"); summary(patch.df) 
-# # combine with vegetation data
-# dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
-#   filter(year==80) %>% dplyr::select(-year) %>% 
-#   full_join(patch.df %>% 
-#               group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% # take mean over all simulation years
-#               summarise(n_year = length(unique(year)),
-#                         dist.dyn = mean(dist.rate)), 
-#             by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>% 
-#   pivot_longer(9:11) %>% 
-#   mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn)); summary(dist.dyn.df)
-# 
-# # regeneration rate
-# regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
-#                       readRDS("results/datasets/regen_grte_backup.RDATA"),
-#                       readRDS("results/datasets/regen_stoko_backup.RDATA")) %>% 
-#   mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
-#          freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
-#          fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
-#          browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>% 
-#   inner_join(forest.ha.df) %>% 
-#   mutate(correction = area/forest.ha, 
-#          recruited_mean = recruited_mean * correction); summary(regen.df)
-# head(regen.df)
-# # combine with vegetation data
-# regen.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
-#   filter(year==80) %>% dplyr::select(-year) %>% 
-#   full_join(regen.df %>% 
-#               group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% 
-#               summarise(regen.dyn = mean(recruited_mean),
-#                         n_year = length(unique(year))), 
-#             by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>% 
-#   pivot_longer(9:11) %>% 
-#   mutate(regen.dyn = ifelse(is.na(regen.dyn), 0, 
-#                             ifelse(is.infinite(regen.dyn), 0, regen.dyn))) 
-# 
-# dyn.df <- dist.dyn.df %>% 
-#   dplyr::select(-n_year) %>% 
-#   full_join(regen.dyn.df) %>% 
-#   drop_na(); unique(dyn.df$climate) # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
-# 
-# rm(patches, patchlist, forest.ha.df); 1+1
+overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
+patches <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
+                     readRDS("results/datasets/patch_grte_backup.RDATA"),
+                     readRDS("results/datasets/patch_stoko_backup.RDATA")); head(patches)
+
+patchlist <- bind_rows(readRDS("results/datasets/patchlist_bgd.RDATA"),
+                       readRDS("results/datasets/patchlist_grte.RDATA"),
+                       readRDS("results/datasets/patchlist_stoko.RDATA")); head(patchlist)
+
+# actually forested area: correction factor for GRTE
+forest.ha.df <- patches %>%
+  inner_join(patchlist) %>%
+  inner_join(areas) %>%
+  # filter(agent %in% c("wind", "fire")) %>% # only unspecific agents
+  mutate(pct=n_cells/n_cells_soll) %>% # what pct of targeted cells was actually disturbed? (proxy for forested area)
+  group_by(year, landscape, climate, size, freq, browsing, fecundity, rep) %>%
+  summarise(area=mean(area),
+            # calculate weighted.mean -> bigger patches should be more reliable
+            # forest.ha=weighted.mean(pct, n_cells)*mean(area), # mean of pct disturbed multiplied by landscape area
+            forest.ha = mean(pct)*mean(area),
+            n_patches = length(unique(patchID))) %>% ungroup() %>%
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+         forest.ha = ifelse(landscape != "grte", area, forest.ha), # only apply this correction for GRTE
+         forest.ha = ifelse(is.na(forest.ha), area, forest.ha)); head(forest.ha.df); summary(forest.ha.df)
+
+patch.df <- patches %>%
+  filter(killed_ba > 0) %>%
+  group_by(landscape, climate, rep, size, freq, browsing, fecundity, year) %>% # don't group by agent
+  summarise(area_disturbed = sum(n_cells)) %>%
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>%
+  inner_join(forest.ha.df) %>%
+  mutate(dist.rate = area_disturbed/forest.ha, # already in % (because area_disturbed in 100 m^2, forest.ha in ha
+         dist.rate = ifelse(dist.rate > 100, 100, dist.rate)) %>%
+  mutate(keep = ifelse(forest.ha > area*0.1, "yes", "no")) %>% # exclude years where forest area drops below 10%
+  filter(keep == "yes"); summary(patch.df)
+# combine with vegetation data
+dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>%
+  filter(year==80) %>% dplyr::select(-year) %>%
+  full_join(patch.df %>%
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% # take mean over all simulation years
+              summarise(n_year = length(unique(year)),
+                        dist.dyn = mean(dist.rate)),
+            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%
+  pivot_longer(9:11) %>%
+  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn)); summary(dist.dyn.df)
+
+# regeneration rate
+regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
+                      readRDS("results/datasets/regen_grte_backup.RDATA"),
+                      readRDS("results/datasets/regen_stoko_backup.RDATA")) %>%
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>%
+  inner_join(forest.ha.df) %>%
+  mutate(correction = area/forest.ha,
+         recruited_mean = recruited_mean * correction); summary(regen.df)
+head(regen.df)
+# combine with vegetation data
+regen.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>%
+  filter(year==80) %>% dplyr::select(-year) %>%
+  full_join(regen.df %>%
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>%
+              summarise(regen.dyn = mean(recruited_mean),
+                        n_year = length(unique(year))),
+            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%
+  pivot_longer(9:11) %>%
+  mutate(regen.dyn = ifelse(is.na(regen.dyn), 0,
+                            ifelse(is.infinite(regen.dyn), 0, regen.dyn)))
+
+dyn.df <- dist.dyn.df %>%
+  dplyr::select(-n_year) %>%
+  full_join(regen.dyn.df) %>%
+  drop_na(); unique(dyn.df$climate) # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
+
+rm(patches, patchlist, forest.ha.df); 1+1
+
+write_csv(dyn.df, "results/datasets/dyn.df.csv")
 
 ## diagnostics rates ####
 # # disturbance processes

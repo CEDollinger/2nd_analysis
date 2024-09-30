@@ -27,6 +27,7 @@ create_hull_cc <- function(data) {
   data[hull_indices, ]
 }
 
+
 i<-1
 for (i in 1:3) {
   a <- dyn.effect %>% 
@@ -110,16 +111,27 @@ for (i in 1:3) {
   }; rm(j)
   
   p1 <- plot_ly(mtrx.melt, x = ~dist.dyn_baseline, y = ~regen.dyn_baseline, z = ~effect, type = "contour",
-                colorscale = colorscale
+                colorscale = colorscale, contours = list(showlines = FALSE)
                 # colors = "PiYG", reversescale=T
   ) %>% 
-    layout(title = paste0(names(response.colors)[i], '; (pink: amplifying, green: dampening)'), 
+    layout(#title = paste0(names(response.colors)[i]), 
            xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+                        zerolinecolor=toRGB("grey93"),
+                        linecolor = "black",
+                        linewidth = 0.5,
+                        mirror = T,
                         ticktext = c(10^c(-3:1),100),
-                        tickvals = c(-3:1, log10(100))),
-           yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]'), 
-           legend = list(title=list(text="this doesn't do anything"))) %>% 
-    colorbar(title = "Climate effect [%]"); p1
+                        tickvals = c(-3:1, log10(100)),
+                        titlefont = list(size = 50), tickfont = list(size = 50)),
+           yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
+                        linecolor = "black",
+                        linewidth = 0.5,
+                        mirror = T,
+                        tickvals = c(1:5*10),
+                        range=range(mtrx.melt$regen.dyn_baseline, na.rm = TRUE),
+                        titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
+    colorbar(title = "Climate effect [%]",
+             titlefont = list(size = 50), tickfont = list(size = 50)); p1
   p2 <- p1 %>%
     add_trace(data = hulls, x = ~dist.dyn_baseline, y = ~regen.dyn_baseline, 
               mode = "lines", type = "scatter",
@@ -127,23 +139,26 @@ for (i in 1:3) {
               color = ~factor(landscape),
               colors="grey30",
               # colors = c("#ffa214", "#7fff41", "#1d99f9"),
-              inherit=F, showlegend=F) %>% 
-    add_text(data = hulls_geom, inherit=F,
-             x = ~centroid_x, y = ~centroid_y, text = ~landscape,
-             mode = "text", showlegend = FALSE, 
-             textfont = list(size = 20, bold=TRUE, color=toRGB("grey10"))); p2
+              inherit=F, showlegend=F); p2 #%>% 
+    # add_text(data = hulls_geom, inherit=F,
+    #          x = ~centroid_x, y = ~centroid_y, text = ~landscape,
+    #          mode = "text", showlegend = FALSE, 
+    #          textfont = list(size = 20, bold=TRUE, color=toRGB("grey10")))
   
   if (i < 3) {
     save_image(p2, file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale=1, 
-               width=900, height=700)
+               width=1900, height=1700)
   } else {
     save_image(p2, file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale=1, 
-               width=900, height=700)
+               width=1900, height=1700)
   }
   
   rm(p1, p2, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords, border, border_neg, border_pos, s,
      colorscale, null_value, colorlength)
 }
+
+
+
 
 
 

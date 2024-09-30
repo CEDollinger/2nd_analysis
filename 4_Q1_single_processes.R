@@ -2,11 +2,9 @@
 # Q1: how important are the processes? ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Each process by themselves ####
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 
-### baseline climate ####
-
+### baseline climate 
 # all processes in one panel
 
 singleProcess.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
@@ -47,15 +45,26 @@ singleProcess.mean <- singleProcess.df %>%
   summarise(value=mean(value)) %>% ungroup() %>% 
   mutate(type = ifelse(process %in% c("Disturbance size", "Disturbance frequency"), "Disturbance", "Regeneration"))
 
+
+# text calculations ####
+singleProcess.df %>% 
+  group_by(landscape, name) %>% 
+  summarise(mean=mean(value),
+            median=median(value),
+            max=max(value))
+
+
+# Plot ####
+
 png("results/figures/Q1_singleProcesses.png", res=200,
-    height=1600, width=2000)
+    height=1600, width=2200)
 singleProcess.df %>%
   filter(name != names(response.colors)[3]) %>% 
   ggplot(aes(x=as.numeric(mod), y=value, col=process)) +
   geom_line(aes(group=paste(rep, process)),
             linewidth=0.2, alpha=0.6) +
   geom_line(data=singleProcess.mean %>% filter(name != names(response.colors)[3]),
-           linewidth=0.5, alpha=1) +
+            linewidth=0.5, alpha=1) +
   geom_point(data=singleProcess.mean %>% filter(name != names(response.colors)[3]),
              size=3, show.legend = T) + #aes(shape=type)
   facet_grid(landscape~name, scales="free_y", switch = "y") +
@@ -66,9 +75,16 @@ singleProcess.df %>%
                               'Seed availability decrease'= "#542788",
                               'Sapling height growth limitations'="#2166ac")) +
   theme_bw() +
-  theme(legend.position = "top")
+  theme(legend.position = "top", 
+        axis.title = ggplot2::element_text(size = 16),
+        axis.text = ggplot2::element_text(size = 14),
+        strip.text.x = element_text(size = 12),
+        strip.text.y = element_text(size = 12),
+        legend.title = ggplot2::element_text(size = 14, angle = 0),
+        legend.text = ggplot2::element_text(size = 12),
+        legend.box = 'horizontal',
+        legend.box.margin = ggplot2::margin(0, 0, 20, 0))
 dev.off()
-rm(singleProcess.df, singleProcess.mean)
 
 # forest loss, for the suppl.
 png("results/figures/suppl_figures/Q1_singleProcesses_forestloss.png", res=200,
