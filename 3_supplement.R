@@ -1,3 +1,57 @@
+# Methods ####
+
+## sensitivity analysis for basal area decline threshold ####
+# compare %landscape changed in year 80 between 5 different threshold levels for (3 landscapes x 3 scenarios x 5 levels)
+# figure: 3x3 panels with 5 bars each -> mean of pct landscape changed, SD over reps as errorbar
+landscape_i <- 1; thresh <- -0.8
+thresh.df <- data.frame()
+for (landscape_i in c(1:3)) {
+  landscapename <- landscapes[landscape_i]
+  basal <- readRDS(paste0("results/datasets/ds.ls_", landscapename,"_backup.RDATA"))[[1]] %>% 
+    filter(year == 80,
+           identifier %in% c(paste0("baseline_rep", 1:5, "_size2_freq2_browsing2_fecundity50"),
+                             paste0("baseline_rep", 1:5, "_size5_freq5_browsing5_fecundity20"),
+                             paste0("baseline_rep", 1:5, "_size10_freq10_browsing10_fecundity10"))); gc()
+  print(paste("Loaded", landscapename))
+  prelim <- data.frame()
+  for (thresh in c(-0.8, -0.65, -0.5, -0.35, -0.2)) {
+    prelim <- bind_rows(prelim, basal %>% 
+                          mutate(threshold = ifelse(basal_diff < thresh, "below", "above")) %>%  # count RUs where basal area dropped by more than <thresh> from reference; unidirectional: only if DECREASE
+                          group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape) %>%
+                          summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
+                          filter(threshold == "below") %>% ungroup() %>% # only keep proportion of changed landscape
+                          group_by(climate, size, freq, browsing, fecundity, landscape) %>% 
+                          summarise(sd = sd(prop),
+                                    prop = mean(prop)) %>% 
+                          mutate(thresh = 100*thresh,
+                                 pick = ifelse(thresh == -50, "yes", "no")))
+  }
+  thresh.df <- bind_rows(thresh.df, prelim); rm(basal, prelim); gc()
+  
+}; write_csv(thresh.df, "results/datasets/thresh.df.csv"); rm(landscapename, landscape_i)
+
+png(paste0("results/figures/suppl_figures/methods_structureChange_5thresholds.png"), res=250,
+    height=1300, width=2000)
+thresh.df %>% 
+  mutate(fecundity= ifelse(fecundity==50, 2, ifelse(fecundity==20, 5, 10)),
+         scenario = paste0("size*", size, "; freq*", freq, "; seed availability/", fecundity, "\nsapling height growth limitations*", browsing),
+         scenario = factor(scenario, levels=c("size*2; freq*2; seed availability/2\nsapling height growth limitations*2",
+                                    "size*5; freq*5; seed availability/5\nsapling height growth limitations*5",
+                                    "size*10; freq*10; seed availability/10\nsapling height growth limitations*10")),
+         landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+         landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
+  ggplot(aes(x=thresh, y=prop*100, col=pick)) +
+  geom_bar(aes(fill=thresh), stat="identity", show.legend = F) +
+  geom_errorbar(aes(ymax=(prop+sd)*100, ymin=(prop-sd)*100), width = 4, show.legend = F) +
+  facet_grid(landscape~scenario) +
+  scale_color_manual(values=c("yes"="green", "no"="black")) +
+  scale_fill_distiller(palette = "PuRd", direction=1) +
+  scale_x_continuous(breaks=c(-0.8, -0.65, -0.5, -0.35, -0.2)*100) +
+  labs(y="Percentage of landscape changed [%]", x="Threshold for structural change detection [%]") +
+  theme_bw()
+# errorbar: mean +/- SD over all 5 reps
+dev.off()
+
 
 # Q2 ####
 
@@ -44,7 +98,7 @@ for (lscp in landscapes) { #, "hotdry"
                           tickvals = c(1:5*10))) %>% 
       colorbar(title="Landscape changed [%]"); p1
     save_image(p1, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_", lscp, ".png"), scale=1, 
-                 width=800, height=700) 
+               width=800, height=700) 
     rm(p1, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d)
   }
 }
@@ -676,51 +730,51 @@ for (landscape_i in 1:3) {
 # landscape_i <- 1
 # for (landscape_i in 1:3) {
 #   landscapename <- landscapes[landscape_i]
-  
-  ### Indicator maps ####
-  
-  # map.df <- readRDS(paste0("results/datasets/map.df_", landscapename, ".RDATA"))
-  # 
-  # # structure
-  # singleIndicators <- map.df %>%
-  #   filter(identifier %ni% paste0("baseline_rep",c(1:5),"_size1_freq1_browsing1_fecundity100")) %>%
-  #   # sample_frac(0.01) %>%
-  #   group_by(climate) %>%
-  #   mutate(chances = length(unique(paste(rep,size,freq,browsing,fecundity)))) %>% ungroup() %>% # chances = number of runs
-  #   pivot_longer(cols=c(10, 14,15)) %>%
-  #   group_by(rid, climate, name, x, y, value) %>%
-  #   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>%
-  #   filter(value=="no") %>%
-  #   full_join(rid.df[rid.df$landscape==landscapename,] %>%
-  #               expand_grid(climate = c("baseline", "hotdry"), value=c("no"),
-  #                           name = c("1. Structure\nBasal area decreased by >50 % from reference", 
-  #                                    "2. Composition\nDominant species changed from reference", 
-  #                                    "3. Remaining forest\nStem density dropping below 50 trees/ha")),
-  #             by = c("rid", "x", "y", "climate", "value", "name")) %>%
-  #   mutate(unchanged = ifelse(is.na(unchanged), 0, unchanged))
-  # singleIndicators %>% summary()
-  # 
-  # png(paste0("results/figures/Q3_map_singleIndicators_", landscapename ,".png"), res=200,
-  #     height=2000, width=2000)
-  # print(
-  #   singleIndicators %>%
-  #     filter(!is.na(x)) %>% 
-  #     ggplot(aes(x=x, y=y, fill=unchanged)) +
-  #     geom_tile() +
-  #     facet_grid(climate~name) +
-  #     coord_equal() +
-  #     scale_fill_distiller(palette = "PuRd", direction = -1) +
-  #     labs(fill="% unchanged",
-  #          title="Map showing which cells where more susceptible to change\nCell value is the % of scenarios where cells remained unchanged") +
-  #     theme_bw()
-  # )
-  # dev.off()
-  # 
-  # rm(singleIndicators, map.df); gc()
-  # print("finished indicator maps")
-  
-  ### Endpoint maps ####
-  
+
+### Indicator maps ####
+
+# map.df <- readRDS(paste0("results/datasets/map.df_", landscapename, ".RDATA"))
+# 
+# # structure
+# singleIndicators <- map.df %>%
+#   filter(identifier %ni% paste0("baseline_rep",c(1:5),"_size1_freq1_browsing1_fecundity100")) %>%
+#   # sample_frac(0.01) %>%
+#   group_by(climate) %>%
+#   mutate(chances = length(unique(paste(rep,size,freq,browsing,fecundity)))) %>% ungroup() %>% # chances = number of runs
+#   pivot_longer(cols=c(10, 14,15)) %>%
+#   group_by(rid, climate, name, x, y, value) %>%
+#   summarise(unchanged = mean(sum(n())/chances)*100) %>% ungroup() %>%
+#   filter(value=="no") %>%
+#   full_join(rid.df[rid.df$landscape==landscapename,] %>%
+#               expand_grid(climate = c("baseline", "hotdry"), value=c("no"),
+#                           name = c("1. Structure\nBasal area decreased by >50 % from reference", 
+#                                    "2. Composition\nDominant species changed from reference", 
+#                                    "3. Remaining forest\nStem density dropping below 50 trees/ha")),
+#             by = c("rid", "x", "y", "climate", "value", "name")) %>%
+#   mutate(unchanged = ifelse(is.na(unchanged), 0, unchanged))
+# singleIndicators %>% summary()
+# 
+# png(paste0("results/figures/Q3_map_singleIndicators_", landscapename ,".png"), res=200,
+#     height=2000, width=2000)
+# print(
+#   singleIndicators %>%
+#     filter(!is.na(x)) %>% 
+#     ggplot(aes(x=x, y=y, fill=unchanged)) +
+#     geom_tile() +
+#     facet_grid(climate~name) +
+#     coord_equal() +
+#     scale_fill_distiller(palette = "PuRd", direction = -1) +
+#     labs(fill="% unchanged",
+#          title="Map showing which cells where more susceptible to change\nCell value is the % of scenarios where cells remained unchanged") +
+#     theme_bw()
+# )
+# dev.off()
+# 
+# rm(singleIndicators, map.df); gc()
+# print("finished indicator maps")
+
+### Endpoint maps ####
+
 #   endpoint <- readRDS(paste0("results/datasets/map_endpoints_",landscapename,".RDATA"))
 #   
 #   # basal area
