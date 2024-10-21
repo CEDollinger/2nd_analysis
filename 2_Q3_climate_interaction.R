@@ -5,9 +5,7 @@
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 dyn.df <- read_csv("results/datasets/dyn.df.csv")
 
-# TO DOs
-## 
-
+# calculate climate effect
 dyn.effect <- dyn.df %>% 
   filter(climate=="baseline") %>% 
   dplyr::select(-climate, -identifier, -n_year) %>% 
@@ -19,14 +17,14 @@ dyn.effect <- dyn.df %>%
               rename(hotdry=value, 
                      dist.dyn_hotdry=dist.dyn)) %>% 
   mutate(baseline = 100-baseline*100, hotdry = 100-hotdry*100) %>% 
-  mutate(effect = hotdry-baseline); summary(dyn.effect) # positive when hotdry > baseline -> amplifying effect
+  mutate(effect = hotdry-baseline); summary(dyn.effect) # positive when hotdry > baseline, i.e.,  amplifying effect
+
 # Create a function to compute the convex hull for a set of points
 create_hull_cc <- function(data) {
   hull_indices <- chull(data$dist.dyn_baseline, data$regen.dyn_baseline)
   hull_indices <- c(hull_indices, hull_indices[1])  # Close the hull by connecting to the first point
   data[hull_indices, ]
 }
-
 
 i<-1
 for (i in 1:3) {
@@ -40,20 +38,6 @@ for (i in 1:3) {
       do(create_hull_cc(.)) %>% 
       mutate(landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
              landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton")))) 
-  # Convert your hulls to an sf object for geometric operations
-  hulls_sf <- st_as_sf(hulls, coords = c("dist.dyn_baseline", "regen.dyn_baseline"), crs = 4326)
-  # Calculate the convex hull for each landscape if not already done
-  hulls_geom <- hulls_sf %>%
-    group_by(landscape) %>%
-    summarize(geometry = st_combine(geometry)) %>%
-    st_convex_hull()  # Compute the convex hull of each landscape
-  # Calculate the centroid of each landscape's convex hull
-  centroids <- st_centroid(hulls_geom)
-  # Extract the coordinates of the centroids
-  centroid_coords <- st_coordinates(centroids)
-  # Add these centroids to the hulls_geom object for later plotting
-  hulls_geom$centroid_x <- centroid_coords[, 1]
-  hulls_geom$centroid_y <- centroid_coords[, 2]
   
   data.loess <- loess(effect ~ dist.dyn_baseline * regen.dyn_baseline, data = a)
   summary(data.loess)
@@ -72,7 +56,7 @@ for (i in 1:3) {
   mtrx.melt$dist.dyn_baseline <- as.numeric(str_sub(mtrx.melt$dist.dyn_baseline, str_locate(mtrx.melt$dist.dyn_baseline, '=')[1,1] + 1))
   mtrx.melt$regen.dyn_baseline <-  as.numeric(str_sub(mtrx.melt$regen.dyn_baseline, str_locate(mtrx.melt$regen.dyn_baseline, '=')[1,1] + 1))
   head(mtrx.melt)
-  
+ 
   # create color scale centered on 0
   # https://stackoverflow.com/questions/43505146/how-to-force-map-zero-to-white-color-in-r-plotly-color-scale
   set.seed(42)
@@ -115,21 +99,21 @@ for (i in 1:3) {
                 # colors = "PiYG", reversescale=T
   ) %>% 
     layout(#title = paste0(names(response.colors)[i]), 
-           xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
-                        zerolinecolor=toRGB("grey93"),
-                        linecolor = "black",
-                        linewidth = 0.5,
-                        mirror = T,
-                        ticktext = c(10^c(-3:1),100),
-                        tickvals = c(-3:1, log10(100)),
-                        titlefont = list(size = 50), tickfont = list(size = 50)),
-           yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
-                        linecolor = "black",
-                        linewidth = 0.5,
-                        mirror = T,
-                        tickvals = c(1:5*10),
-                        range=range(mtrx.melt$regen.dyn_baseline, na.rm = TRUE),
-                        titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
+      xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+                   zerolinecolor=toRGB("grey93"),
+                   linecolor = "black",
+                   linewidth = 0.5,
+                   mirror = T,
+                   ticktext = c(10^c(-3:1),100),
+                   tickvals = c(-3:1, log10(100)),
+                   titlefont = list(size = 50), tickfont = list(size = 50)),
+      yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+                   linecolor = "black",
+                   linewidth = 0.5,
+                   mirror = T,
+                   tickvals = c(1:5*10),
+                   range=range(mtrx.melt$regen.dyn_baseline, na.rm = TRUE),
+                   titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
     colorbar(title = "Climate effect [%]",
              titlefont = list(size = 50), tickfont = list(size = 50)); p1
   p2 <- p1 %>%
@@ -139,27 +123,19 @@ for (i in 1:3) {
               color = ~factor(landscape),
               colors="grey30",
               # colors = c("#ffa214", "#7fff41", "#1d99f9"),
-              inherit=F, showlegend=F); p2 #%>% 
-    # add_text(data = hulls_geom, inherit=F,
-    #          x = ~centroid_x, y = ~centroid_y, text = ~landscape,
-    #          mode = "text", showlegend = FALSE, 
-    #          textfont = list(size = 20, bold=TRUE, color=toRGB("grey10")))
+              inherit=F, showlegend=F); p2 
   
-  if (i < 3) {
-    save_image(p2, file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale=1, 
-               width=1900, height=1700)
-  } else {
+  if (i == 3) {
     save_image(p2, file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale=1, 
                width=1900, height=1700)
+  } else {
+    save_image(p2, file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale=1, 
+               width=1900, height=1700)
+    
   }
   
-  rm(p1, p2, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords, border, border_neg, border_pos, s,
-     colorscale, null_value, colorlength)
-}
-
-
-
-
+}; rm(p1, p2, data.loess, a, xgrid, ygrid, data.fit, mtrx3d, border, border_neg, border_pos, s, i, mtrx.melt, hulls, colorscale,
+      null_value, colorlength)
 
 
 # # # # # # # # # # # # # # # # # # # # # #
@@ -200,7 +176,7 @@ for (i in 1:3) {
 #   scale_color_manual(values=c("hotdry" = "firebrick2", "baseline"="royalblue3")) +
 #   ylim(0, 100) +
 #   labs(y = "Landscape unchanged [%]", col = "Climate scenario",
-#        x = paste0("Simulated regeneration rate [Mean number of tress recruited per ha yr^-1]")) +
+#        x = paste0("Simulated recruitment rate [Mean number of tress recruited per ha yr^-1]")) +
 #   theme_bw() +
 #   theme(legend.position = "top")
 # dev.off()
@@ -278,7 +254,7 @@ for (i in 1:3) {
 # dev.off()
 # 
 # 
-# ### regeneration rate ####
+# ### recruitment rate ####
 # regen.dyn.effect <- dyn.df %>% 
 #   filter(climate=="baseline") %>% 
 #   dplyr::select(-climate, -identifier, -n_year, -dist.dyn) %>% 
@@ -290,7 +266,7 @@ for (i in 1:3) {
 #   mutate(effect = hotdry-baseline) # positive when hotdry > baseline -> dampening effect
 # summary(regen.dyn.effect)
 # 
-# # absolute regeneration rate
+# # absolute recruitment rate
 # png("results/figures/Q2_climateEffect_regenerationRate.png", res=200,
 #     height=1300, width=2000)
 # regen.dyn.effect %>% 
@@ -308,14 +284,14 @@ for (i in 1:3) {
 #   scale_fill_manual(name = "Interaction type",
 #                     values = c("Amplifying"="hotpink1", "Dampening" = "cornflowerblue"),
 #                     labels = c("Amplifying:\nmore landscape broken", "Dampening:\nless landscape broken")) +
-#   labs(x = "Simulated regeneration rate [Mean number of tress recruited per ha yr^-1]",
+#   labs(x = "Simulated recruitment rate [Mean number of tress recruited per ha yr^-1]",
 #        y = "Climate effect [percentage point change, %] ", title="Effect of climate on landscape unchanged compared to baseline",
 #        col="Landscape") +
 #   scale_color_manual(values=colors.landscape) +
 #   theme_bw()
 # dev.off()
 
-# relative regeneration rate
+# relative recruitment rate
 # png("results/figures/Q2_climateEffect_regenerationRate_relative_80yrs.png", res=200,
 #     height=1300, width=2000)
 # regen.dyn.effect %>% 

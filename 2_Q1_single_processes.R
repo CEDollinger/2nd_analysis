@@ -10,29 +10,29 @@ overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 singleProcess.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
   filter(year==80, climate=="baseline") %>% 
   filter(freq==1, fecundity==100, browsing==1) %>% 
-  pivot_longer(cols=10:12) %>% 
+  pivot_longer(cols=names(response.colors)) %>% 
   group_by(landscape, size, name, rep) %>% 
   summarise(value=mean(value)) %>% ungroup() %>% 
   rename(mod = size, 'Disturbance size'=value) %>% 
   full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
               filter(year==80, climate=="baseline") %>% 
               filter(size==1, fecundity==100, browsing==1) %>% 
-              pivot_longer(cols=10:12) %>% 
+              pivot_longer(cols=names(response.colors)) %>% 
               group_by(landscape, freq, name, rep) %>% 
               summarise(value=mean(value)) %>% ungroup() %>% 
               rename(mod=freq, 'Disturbance frequency'=value)) %>% 
   full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
               filter(year==80, climate=="baseline") %>% 
               filter(size==1, freq==1, browsing==1) %>% 
-              pivot_longer(cols=10:12) %>% 
+              pivot_longer(cols=names(response.colors)) %>% 
               group_by(landscape, fecundity, name, rep) %>% 
               summarise(value=mean(value)) %>% ungroup() %>% 
-              rename(mod=fecundity, 'Seed availability decrease'=value) %>% 
+              rename(mod=fecundity, 'Seed production decrease'=value) %>% 
               mutate(mod=case_match(mod, "100"~"1", "50"~"2", "20"~"5", "10"~"10"))) %>% 
   full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
               filter(year==80, climate=="baseline") %>% 
               filter(size==1, freq==1, fecundity==100) %>% 
-              pivot_longer(cols=10:12) %>% 
+              pivot_longer(cols=names(response.colors)) %>% 
               group_by(landscape, browsing, name, rep) %>% 
               summarise(value=mean(value)) %>% ungroup() %>% 
               rename(mod=browsing, 'Sapling height growth limitations'=value)) %>%
@@ -72,7 +72,7 @@ singleProcess.df %>%
   scale_x_continuous(labels=c("Ref.", "*2", "*5", "*10"), breaks=c(1,2,5,10)) +
   scale_color_manual(values=c('Disturbance size' = "#b35806",
                               'Disturbance frequency' = "#f46d43",
-                              'Seed availability decrease'= "#542788",
+                              'Seed production decrease'= "#542788",
                               'Sapling height growth limitations'="#2166ac")) +
   theme_bw() +
   theme(legend.position = "top", 
@@ -88,7 +88,7 @@ dev.off()
 
 # forest loss, for the suppl.
 png("results/figures/suppl_figures/Q1_singleProcesses_forestloss.png", res=200,
-    height=1600, width=1000)
+    height=1600, width=1700)
 singleProcess.df %>%
   filter(name == names(response.colors)[3]) %>% 
   ggplot(aes(x=as.numeric(mod), y=value, col=process)) +
@@ -103,7 +103,7 @@ singleProcess.df %>%
   scale_x_continuous(labels=c("Ref.", "*2", "*5", "*10"), breaks=c(1,2,5,10)) +
   scale_color_manual(values=c('Disturbance size' = "#b35806",
                               'Disturbance frequency' = "#f46d43",
-                              'Seed availability decrease'= "#542788",
+                              'Seed production decrease'= "#542788",
                               'Sapling height growth limitations'="#2166ac")) +
   theme_bw() +
   theme(legend.position = "top")
@@ -694,7 +694,7 @@ rm(singleProcess.df, singleProcess.mean)
 #     geom_line(data=mean.fecundity, linewidth=1.2) +
 #     facet_wrap(~name) +
 #     ylim(0,100) +
-#     labs(y="Landscape unchanged [%]", x="Seed availability modification", col="Landscape", linetype="Climate") +
+#     labs(y="Landscape unchanged [%]", x="Seed production modification", col="Landscape", linetype="Climate") +
 #     scale_x_continuous(labels=c("Reference", "/2", "/5", "/10")) +
 #     scale_color_manual(values=colors.landscape) +
 #     theme_bw(),
@@ -804,7 +804,7 @@ rm(singleProcess.df, singleProcess.mean)
 #     geom_line(data=mean.fecundity, linewidth=1.2) +
 #     facet_wrap(~name) +
 #     ylim(0,100) +
-#     labs(y="System broken [%]", x="Seed availability modification", col="Landscape") +
+#     labs(y="System broken [%]", x="Seed production modification", col="Landscape") +
 #     scale_x_continuous(labels=c("Reference", "/2", "/5", "/10")) +
 #     scale_color_manual(values=colors.landscape) +
 #     theme_bw(),
@@ -852,7 +852,7 @@ rm(singleProcess.df, singleProcess.mean)
 #   ggplot2::geom_point(data = a, aes(x = dist.dyn, y = regen.dyn), color = 'white', size = 0.2, inherit.aes = FALSE) +
 #   ggplot2::geom_contour(ggplot2::aes(z = value), color = 'black', linewidth = 0.75, linetype = 'dashed') +
 #   ggplot2::labs(x = "Disturbance rate",
-#                 y = "Regeneration rate",
+#                 y = "Recruitment rate",
 #                 title = paste0(clim, " climate: ", names(response.colors)[i])) +
 #   ggplot2::theme_minimal() +
 #   ggplot2::theme(axis.title = ggplot2::element_text(size = 16),

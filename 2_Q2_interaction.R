@@ -4,7 +4,7 @@
 
 dyn.df <- read_csv("results/datasets/dyn.df.csv")
 
-# text calculations ####
+# Text calculations ####
 
 # hectare-years
 mean(c(8645, 42586, 35676))*7680*80
@@ -20,14 +20,14 @@ dyn.df %>%
             median=median(value),
             max=max(value)) 
 
-# reference disturbance and regeneration rate
+# reference disturbance and recruitment rate
 dyn.df %>% 
   filter(climate == "baseline", size == 1, freq == 1, fecundity == 100, browsing == 1) %>% 
   group_by(landscape) %>% 
   summarise(dist = mean(dist.dyn),
             regen = mean(regen.dyn))
 
-  
+
 # Plot ####
 
 # Create a function to compute the convex hull for a set of points
@@ -90,15 +90,15 @@ for (clim in c("baseline")) { #, "hotdry"
     p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",  contours = list(showlines = FALSE),
                   colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
       layout(#title = names(response.colors)[i], 
-             xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
-                          zerolinecolor=toRGB("grey93"),
-                          ticktext = c(10^c(-3:1),100),
-                          tickvals = c(-3:1, log10(100)),
-                          titlefont = list(size = 50), tickfont = list(size = 50)),
-             yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
-                          tickvals = c(1:5*10),
-                          range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
-                          titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
+        xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+                     zerolinecolor=toRGB("grey93"),
+                     ticktext = c(10^c(-3:1),100),
+                     tickvals = c(-3:1, log10(100)),
+                     titlefont = list(size = 50), tickfont = list(size = 50)),
+        yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+                     tickvals = c(1:5*10),
+                     range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
+                     titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
       colorbar(title="Change [%]",
                titlefont = list(size = 50), tickfont = list(size = 50)); p1
     p2 <- p1 %>%
@@ -109,24 +109,20 @@ for (clim in c("baseline")) { #, "hotdry"
                 colors="grey30",
                 # colors = c("#ffa214", "#7fff41", "#1d99f9"),
                 inherit=F, showlegend=F); p2
-    p3 <- p2 %>%
-      add_text(data = hulls_geom, inherit=F,
-               x = ~centroid_x, y = ~centroid_y, text = ~landscape,
-               mode = "text", showlegend = FALSE, 
-               textfont = list(size = 26, bold=TRUE, color=toRGB("grey10"))); p3
-    if (i == 1) {
-      save_image(p2, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
-                 width=1900, height=1700) } 
-    if (i == 2) {
-      save_image(p2, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
-                width=1900, height=1700) 
-    } 
+    # p3 <- p2 %>%
+    #   add_text(data = hulls_geom, inherit=F,
+    #            x = ~centroid_x, y = ~centroid_y, text = ~landscape,
+    #            mode = "text", showlegend = FALSE, 
+    #            textfont = list(size = 26, bold=TRUE, color=toRGB("grey10"))); p3
     if (i == 3) {
       save_image(p2, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
                  width=1900, height=1700) 
-    }
+    } else {
+      save_image(p2, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_", clim, ".png"), scale=1, 
+                 width=1900, height=1700) 
+    } 
     
-    rm(p1, p2, p3, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords)
+    rm(p1, p2, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords) #, p3
   }
 }
 
@@ -134,6 +130,22 @@ for (clim in c("baseline")) { #, "hotdry"
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # DISCARDED ####
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+## inset figure ####
+p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",  contours = list(showlines = FALSE),
+              colors = "white", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1)%>% 
+  colorbar(title="Change [%]",
+           titlefont = list(size = 50), tickfont = list(size = 50)); p1
+p2 <- p1 %>%
+  add_trace(data = hulls, x = ~dist.dyn, y = ~regen.dyn,
+            mode = "lines", type = "scatter",
+            line = list(width = 10),  # Line width
+            color = ~factor(landscape),
+            colors="grey30",
+            inherit=F, showlegend=F); p2
+save_image(p2, file = paste0("results/figures/suppl_figures/Q2_contourPlot_inset.png"), scale=1, 
+           width=1900, height=1700) 
+
 
 ## create dyn.df ####
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
@@ -188,7 +200,7 @@ dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls
   pivot_longer(9:11) %>%
   mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn)); summary(dist.dyn.df)
 
-# regeneration rate
+# recruitment rate
 regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
                       readRDS("results/datasets/regen_grte_backup.RDATA"),
                       readRDS("results/datasets/regen_stoko_backup.RDATA")) %>%
@@ -297,7 +309,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 # # -> calculate disturbance rate only based on first 5-10 simulation years?
 # 
 # 
-# # regeneration rate
+# # recruitment rate
 # regen.plot <- regen.df %>% 
 #   filter(climate=="baseline", size==1, freq==1, browsing==5, fecundity==20) %>% 
 #   group_by(year, landscape, rep) %>% 
@@ -311,8 +323,8 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #   geom_line(linewidth=0.2) +
 #   geom_hline(data=regen.plot.mean, aes(yintercept=regen.rate)) +
 #   facet_wrap(~landscape) +
-#   labs(x="Sim. year", y="Regeneration rate [mean n trees recruited ha^-1 yr^-1]", 
-#        title="Simulated regeneration rates\nbaseline size*1 freq*1 browsing*5 fecundity*20 reps 1:5") +
+#   labs(x="Sim. year", y="Recruitment rate [mean n trees recruited ha^-1 yr^-1]", 
+#        title="Simulated recruitment rates\nbaseline size*1 freq*1 browsing*5 fecundity*20 reps 1:5") +
 #   theme_bw()
 # dev.off()
 # rm(regen.plot, regen.plot.mean)
@@ -330,8 +342,8 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #          landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
 #   ggplot(aes(x=reorder(level, regen), y=regen.rate, col=landscape, group=paste(rep, landscape))) +
 #   geom_line(linewidth=1) +
-#   labs(x="Regeneration modification", y="Regeneration rate [Mean number of tress recruited per ha yr^-1]", 
-#        title="Simulated regeneration rate\nbaseline climate, simulation year 40, reps 1:5",
+#   labs(x="Regeneration modification", y="Recruitment rate [Mean number of tress recruited per ha yr^-1]", 
+#        title="Simulated recruitment rate\nbaseline climate, simulation year 40, reps 1:5",
 #        col="Landscape") +
 #   scale_color_manual(values=colors.landscape) +
 #   theme_bw()
@@ -398,7 +410,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2,
 #                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
 #   facet_grid(~name) +
-#   labs(x="Disturbance rate [based on all 80 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+#   labs(x="Disturbance rate [based on all 80 yrs, % yr^-1]", y="Recruitment rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
 #   theme_bw()
 # dev.off()  
 
@@ -425,7 +437,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 # p <- plot_ly(x = ~surface.list[["baseline"]][[1]]$dist.dyn, y = ~surface.list[["baseline"]][[1]]$regen.dyn, 
 #              z = ~surface.list[["baseline"]][[1]]$value, intensity = ~surface.list[["baseline"]][[1]]$value, type = 'mesh3d') %>%
 #   layout(title = 'Raw data', 
-#          scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+#          scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Recruitment rate"), 
 #                       zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)"))); p
 # save_image(p, file = paste0("results/figures/surface_1_baseline_rawData.png"), scale=1, width=1000, height=1000); rm(p)
 # 
@@ -435,7 +447,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 # disturbance_rate <-mod1$model[,1]; regeneration_rate <- mod1$model[,2]; structural_change <-mod1$fitted.values; plot_ly(
 #   x = ~disturbance_rate, y = ~regeneration_rate, z = ~structural_change, intensity = ~structural_change, type = 'mesh3d') %>%
 #   layout(title = 'Linear model', 
-#          scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+#          scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Recruitment rate"), 
 #                       zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
 # 
 # # loess model
@@ -444,7 +456,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 # plot_ly(
 #   x = ~disturbance_rate, y = ~regeneration_rate, z = ~structural_change, intensity = ~structural_change, type = 'mesh3d') %>%
 #   layout(title = 'Loess model', 
-#          scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+#          scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Recruitment rate"), 
 #                       zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)")))
 # 
 # # loop for loess models
@@ -455,7 +467,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #     p <- plot_ly(x = ~surface.list[[clim]][[resp]]$dist.dyn, y = ~surface.list[[clim]][[resp]]$regen.dyn, 
 #                  z = ~surface.list[[clim]][[resp]]$value, intensity = ~surface.list[[clim]][[resp]]$value, type = 'mesh3d') %>%
 #       layout(title = paste0(clim, " - ", names(response.colors)[resp], '\nRaw data'),
-#              scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+#              scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Recruitment rate"), 
 #                           zaxis = list(title = "Landscape changed [structure, %]"), coloraxis = list(title = "this does NOT work (yet)"))); p
 #     save_image(p, file = paste0("results/figures/surface_raw_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000); rm(p)
 #     
@@ -465,7 +477,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #     p1 <- plot_ly(
 #       x = ~disturbance_rate, y = ~regeneration_rate, z = ~change, intensity = ~change, type = 'mesh3d') %>%
 #       layout(title = paste0(clim, " - ", names(response.colors)[resp], '\nLoess model'), 
-#              scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Regeneration rate"), 
+#              scene = list(xaxis = list(title = "Disturbance rate"), yaxis = list(title = "Recruitment rate"), 
 #                           zaxis = list(title = "Landscape changed [%]"), coloraxis = list(title = "this does NOT work (yet)")))
 #     save_image(p1, file = paste0("results/figures/surface_loess_", resp, "_", clim, ".png"), scale=1, width=1000, height=1000)
 #     rm(mod2, disturbance_rate, regeneration_rate, change, p1)
@@ -535,8 +547,8 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 # dev.off()
 # 
 # 
-# ### regeneration rate ####
-# # overall mean regeneration rate on x-axis
+# ### recruitment rate ####
+# # overall mean recruitment rate on x-axis
 # regen.dyn.df$regen.dyn %>% summary() 
 # ranges.regen <- c(range(regen.dyn.df[regen.dyn.df$landscape=="stoko", "regen.dyn"]),
 #                   range(regen.dyn.df[regen.dyn.df$landscape=="bgd", "regen.dyn"]),
@@ -553,7 +565,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #   scale_x_reverse() +
 #   scale_color_manual(values=response.colors) +
 #   labs(y = "Landscape changed [%]", col = "Response",
-#        x = paste0("Simulated regeneration rate [Mean number of tress recruited per ha yr^-1]\nRate based on the first ", unique(regen.dyn.df$n_year)," simulation years")) +
+#        x = paste0("Simulated recruitment rate [Mean number of tress recruited per ha yr^-1]\nRate based on the first ", unique(regen.dyn.df$n_year)," simulation years")) +
 #   theme_bw() +
 #   coord_cartesian(clip="off") +
 #   annotate("text", x = mean(ranges.regen[1:2]), y = 45, label = "Shiretoko") + 
@@ -566,7 +578,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 # dev.off()
 # 
 # 
-# # relative regeneration rate
+# # relative recruitment rate
 # regenIncrease.id <- regen.dyn.df %>%  
 #   filter(climate=="baseline") %>% 
 #   full_join(regen.dyn.df %>% 
@@ -601,8 +613,8 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #   ylim(0, 100) +
 #   scale_color_manual(values=response.colors) +
 #   labs(y = "Landscape changed [%]", col = "Response",
-#        x = paste0("Percent change in regeneration rate [%]\nRates based on the first ", unique(regen.dyn.df$n_year)," simulation years"),
-#        title="All runs with an increase in regeneration rate (looking at you BGD...) filtered out"
+#        x = paste0("Percent change in recruitment rate [%]\nRates based on the first ", unique(regen.dyn.df$n_year)," simulation years"),
+#        title="All runs with an increase in recruitment rate (looking at you BGD...) filtered out"
 #   ) +
 #   theme_bw() +
 #   theme(legend.position = "top")
@@ -623,7 +635,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #   geom_point() +
 #   facet_grid(~landscape, scales="free") +
 #   # scale_y_reverse() +
-#   labs(x="Disturbance rate [based on first 80 yrs, % yr^-1]", y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+#   labs(x="Disturbance rate [based on first 80 yrs, % yr^-1]", y="Recruitment rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
 #   theme_bw() +
 #   scale_color_manual(values=colors.landscape) +
 #   theme(legend.position = "none")
@@ -646,7 +658,7 @@ write_csv(dyn.df, "results/datasets/dyn.df.csv")
 #   scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2, 
 #                 label = c(0.0001, 0.001, 0.01, 0.1, 1, 10)*2) +
 #   labs(x="Disturbance rate [based on all 80 yrs, % yr^-1]", col="Landscape",
-#        y="Regeneration rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
+#        y="Recruitment rate\n[based on all 80 yrs, recruited trees per ha yr^-1]") +
 #   scale_color_manual(values=colors.landscape) +
 #   theme_bw() 
 # dev.off()

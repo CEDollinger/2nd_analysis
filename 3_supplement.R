@@ -30,24 +30,28 @@ for (landscape_i in c(1:3)) {
   
 }; write_csv(thresh.df, "results/datasets/thresh.df.csv"); rm(landscapename, landscape_i)
 
+thresh.df <- read_csv("results/datasets/thresh.df.csv")
 png(paste0("results/figures/suppl_figures/methods_structureChange_5thresholds.png"), res=250,
     height=1300, width=2000)
 thresh.df %>% 
   mutate(fecundity= ifelse(fecundity==50, 2, ifelse(fecundity==20, 5, 10)),
-         scenario = paste0("size*", size, "; freq*", freq, "; seed availability/", fecundity, "\nsapling height growth limitations*", browsing),
-         scenario = factor(scenario, levels=c("size*2; freq*2; seed availability/2\nsapling height growth limitations*2",
-                                    "size*5; freq*5; seed availability/5\nsapling height growth limitations*5",
-                                    "size*10; freq*10; seed availability/10\nsapling height growth limitations*10")),
+         scenario = paste0("size*", size, "; freq*", freq, "; seed production/", fecundity, "\nsapling height growth limitations*", browsing),
+         scenario = case_match(scenario, 
+                               "size*2; freq*2; seed production/2\nsapling height growth limitations*2" ~ "Lowest levels of modification",
+                                    "size*5; freq*5; seed production/5\nsapling height growth limitations*5" ~ "Intermediate levels of modification",
+                                    "size*10; freq*10; seed production/10\nsapling height growth limitations*10" ~ "Highest levels of modification"),
+         scenario = factor(scenario, levels=c("Lowest levels of modification",  "Intermediate levels of modification", "Highest levels of modification")),
          landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
          landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
-  ggplot(aes(x=thresh, y=prop*100, col=pick)) +
-  geom_bar(aes(fill=thresh), stat="identity", show.legend = F) +
-  geom_errorbar(aes(ymax=(prop+sd)*100, ymin=(prop-sd)*100), width = 4, show.legend = F) +
+  ggplot(aes(x=thresh, y=prop*100)) +
+  geom_bar(aes(fill=thresh), stat="identity", show.legend = F, col="black") +
+  geom_point(aes(x=rep(-50, nrow(thresh.df)), y=rep(8, nrow(thresh.df))), shape=8) +
+  geom_errorbar(aes(ymax=(prop+sd)*100, ymin=(prop-sd)*100), width = 4, show.legend = F, col="black") +
   facet_grid(landscape~scenario) +
-  scale_color_manual(values=c("yes"="green", "no"="black")) +
-  scale_fill_distiller(palette = "PuRd", direction=1) +
+  #scale_linewidth_manual(values=c("yes"=1, "no"=.5)) +
+  scale_fill_distiller(palette = "RdPu", direction=1) +
   scale_x_continuous(breaks=c(-0.8, -0.65, -0.5, -0.35, -0.2)*100) +
-  labs(y="Percentage of landscape changed [%]", x="Threshold for structural change detection [%]") +
+  labs(y="Percentage of landscape changed [%]", x="Threshold for structural decline detection [%]") +
   theme_bw()
 # errorbar: mean +/- SD over all 5 reps
 dev.off()
@@ -94,7 +98,7 @@ for (lscp in landscapes) { #, "hotdry"
              xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
                           ticktext = c(10^c(-3:1),100),
                           tickvals = c(-3:1, log10(100))),
-             yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
+             yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
                           tickvals = c(1:5*10))) %>% 
       colorbar(title="Landscape changed [%]"); p1
     save_image(p1, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_", lscp, ".png"), scale=1, 
@@ -104,12 +108,12 @@ for (lscp in landscapes) { #, "hotdry"
 }
 
 
-## categorical regeneration rate plots ####
+## categorical recruitment rate plots ####
 dyn.df <- read_csv("results/datasets/dyn.df.csv")
 
-ranges.dist <- c(range(dist.dyn.df[dist.dyn.df$landscape=="stoko", "dist.dyn"]),
-                 range(dist.dyn.df[dist.dyn.df$landscape=="bgd", "dist.dyn"]),
-                 range(dist.dyn.df[dist.dyn.df$landscape=="grte", "dist.dyn"]))
+ranges.dist <- c(range(dyn.df[dyn.df$landscape=="stoko", "dist.dyn"]),
+                 range(dyn.df[dyn.df$landscape=="bgd", "dist.dyn"]),
+                 range(dyn.df[dyn.df$landscape=="grte", "dist.dyn"]))
 i<-1; clim <- "baseline"
 for (clim in c("baseline")) { #, "hotdry"
   for (i in 1:3) {
@@ -128,7 +132,7 @@ for (clim in c("baseline")) { #, "hotdry"
       scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2, # year 1:80 *0.5, 1:10 *2, 1:5 *5, 1:2 *10
                     label = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2) +
       ylim(0, 100) +
-      labs(y = "Landscape changed [%]", col = "Regeneration rate", title=paste0(names(response.colors)[i]),
+      labs(y = "Landscape changed [%]", col = "Recruitment rate", title=paste0(names(response.colors)[i]),
            x = paste0("Simulated disturbance rate [% yr^-1]\nAxis log10-transformed")) +
       theme_bw() +
       coord_cartesian(clip="off") +
@@ -142,7 +146,6 @@ for (clim in c("baseline")) { #, "hotdry"
     dev.off(); rm(p)
   }
 }
-
 
 
 
@@ -206,7 +209,7 @@ dev.off()
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Q0: Diagnostic plots ###########################################################################################################################################
+# Diagnostic plots ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 ref.df <- read_csv("raw_data/helper_files/ref.df.csv")

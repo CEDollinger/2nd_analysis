@@ -6,4 +6,9 @@ old_markdowns/
 *.Rhistory
 *.RData
 .Rproj.user
-*X_
+X_2ndStudy_analysis.Rmd
+X_2ndStudy_diagnostics.Rmd
+X_diagnostic_plots.R
+X_trial_surface.R
+X_Misc.R
+X_test.R
