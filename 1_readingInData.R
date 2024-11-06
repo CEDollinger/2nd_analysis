@@ -2,6 +2,8 @@
 # Reading in data ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+## Raw simulation outputs ####
+
 landscape_i <- 1; i<-1; id<-1
 for (landscape_i in c(1:3)) {
   landscapename <- landscapes[landscape_i]
@@ -39,7 +41,7 @@ for (landscape_i in c(1:3)) {
       db.conn <- dbConnect(RSQLite::SQLite(), dbname = dbname) # output_baseline_rep1_size1_freq1_browsing1_fecundity75
       
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-      ## landscape output ####
+      ### landscape output ####
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
       ls.i <- tbl(db.conn, "landscape") %>%
         dplyr::select(year, species, count_ha, basal_area_m2, gwl_m3, volume_m3, height_avg_m, cohort_count_ha) %>%
@@ -55,7 +57,7 @@ for (landscape_i in c(1:3)) {
                landscape = landscapename)
       
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-      # removed output ####
+      ## removed output ####
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
       rem.i <- tbl(db.conn, "landscape_removed") %>%
         dplyr::select(year, species, count, basal_area_m2, volume_m3, dbh_class, reason) %>%
@@ -71,7 +73,7 @@ for (landscape_i in c(1:3)) {
                landscape = landscapename)
       
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-      # dynamicstand output ####
+      ## dynamicstand output ####
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
       ds.i <- tbl(db.conn, "dynamicstand") %>%
         dplyr::select(-ru) %>%
@@ -144,7 +146,7 @@ for (landscape_i in c(1:3)) {
       dbDisconnect(db.conn)
       
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-      # patch output ####
+      ## patch output ####
       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
       # requirements for the management intervention to count as a disturbance patch:
       ## needs to be forested (before_ba > 0, n_cells > 0)
@@ -155,7 +157,7 @@ for (landscape_i in c(1:3)) {
                climate=master$climate[i], rep=master$rep[i], size=master$sizeMod[i], freq=master$freqMod[i],
                browsing=master$browsingMod[i], fecundity=master$fecundityMod[i]) 
       
-      # regeneration rate ####
+      ## regeneration rate ####
       regen.i <- ls.i %>% 
         group_by(landscape, year, identifier, size, freq, climate, rep, browsing, fecundity) %>% 
         summarise(count.sum = sum(count_ha)) %>% ungroup() %>% 
@@ -200,12 +202,61 @@ for (landscape_i in c(1:3)) {
 ## note: i backed up the previous datasets on my private laptop (19.09.2024, 16:00)
 
 
+## Patch sizes ####
+### For Shiretoko and Berchtesgaden
+
+i<-1; rep.i <- 1
+patchlist <- data.frame()
+for (i in 1:2) {
+  for (rep.i in 1:5) {
+    mgmt.full.prelim <- read_csv(paste0("../prep/data/", landscapes[i], "_rep", rep.i, "_level16.csv")) %>% 
+      group_by(unique, mod.size, mod.freq, mgmt.rep, agent) %>% mutate(sum=sum(n())) %>% ungroup() %>% filter(sum>4) %>% # filter out patches smaller than 0.5 ha
+      dplyr::select(unique, sum, year, mod.size, mod.freq, landscape) %>% 
+      distinct() %>% 
+      mutate(rep = rep.i) %>% 
+      rename(n_cells_soll = sum, size = mod.size, freq=mod.freq, patchID=unique) 
+    patchlist <- bind_rows(patchlist, mgmt.full.prelim); rm(mgmt.full.prelim)
+    print(rep.i)
+  }
+  patchlist %>% summary(); nrow(patchlist); nrow(patchlist %>% ungroup() %>% distinct())
+  saveRDS(patchlist %>% distinct(), paste0("results/datasets/patchlist_", landscapes[i], ".RDATA"))
+}
+
+### For Grand Teton
+landscapename <- "grte"
+i<-1; rep<-1
+patchlist <- data.frame()
+for (rep in c(1:5)) { 
+  rep_i <- rep
+  level <- data.frame()
+  for (i in c(1:16)) { 
+    mgmt.full <- bind_rows(read_csv(paste0("../prep/data/grte_rep", rep_i, "_level", i,"_fire.csv")), 
+                           read_csv(paste0("../prep/data/grte_rep", rep_i, "_level", i,"_bite.csv"))) %>%
+      group_by(unique, mod.size, mod.freq, mgmt.rep, agent) %>% mutate(sum=sum(n())) %>% ungroup() %>% filter(sum>4) %>% # filter out patches smaller than 0.5 ha
+      dplyr::select(unique, sum, year, mod.size, mod.freq, landscape) %>% 
+      mutate(rep=rep_i) %>% 
+      distinct() %>% 
+      rename(n_cells_soll = sum, size = mod.size, freq=mod.freq, patchID=unique)
+    level<-bind_rows(level, mgmt.full); rm(mgmt.full)
+    print(i)
+  }
+  saveRDS(level, paste0("results/datasets/grte_patchlist_rep", rep_i, ".RDATA"))
+  patchlist <- bind_rows(patchlist, level); rm(level)
+} 
+patchlist %>% summary(); nrow(patchlist); nrow(patchlist %>% distinct())
+saveRDS(patchlist %>% distinct(), "results/datasets/patchlist_grte.RDATA")
+
+
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Sub-data frames of ds.ls ###########################################################################################################################################
+# Sub-data frames ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# empty lists
+## Based on ds.ls ####
+
+# empty lists and data.frames
 overtime.ls <- list(c(), c(), c()); names(overtime.ls) <- landscapes
+thresh.df <- data.frame()
 
 # overtime.ls <- readRDS("results/datasets/overTime.ls.RDATA")
 
@@ -216,7 +267,7 @@ for (landscape_i in 1:3) {
   ds.ls <- readRDS(paste0("results/datasets/ds.ls_", landscapename, "_backup.RDATA")) # bgd: 26 GB
   names(ds.ls) <- c("basal", "dom", "forest")
   
-  ## over time ####
+  ### over time ####
   overtime.ls[[landscapename]] <- ds.ls[["basal"]] %>%
     group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
     summarise(
@@ -247,9 +298,29 @@ for (landscape_i in 1:3) {
   if (landscapename == "stoko") overtime.ls[["stoko"]]<-overtime.ls[["stoko"]][-709,] # fix malformed factor
   if (landscapename == "grte") overtime.ls[["grte"]]<-overtime.ls[["grte"]][c(-7681, -7682),]
   
-  rm(ds.ls)
+  ## thresh.df ####
+  # sensitivity analysis for basal area decline threshold
+  basal <- ds.ls[["basal"]] %>% 
+    filter(year == 80,
+           identifier %in% c(paste0("baseline_rep", 1:5, "_size2_freq2_browsing2_fecundity50"),
+                             paste0("baseline_rep", 1:5, "_size5_freq5_browsing5_fecundity20"),
+                             paste0("baseline_rep", 1:5, "_size10_freq10_browsing10_fecundity10")))
+  prelim <- data.frame()
+  for (thresh in c(-0.8, -0.65, -0.5, -0.35, -0.2)) {
+    prelim <- bind_rows(prelim, basal %>% 
+                          mutate(threshold = ifelse(basal_diff < thresh, "below", "above")) %>%  # count RUs where basal area dropped by more than <thresh> from reference; unidirectional: only if DECREASE
+                          group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape) %>%
+                          summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
+                          filter(threshold == "below") %>% ungroup() %>% # only keep proportion of changed landscape
+                          group_by(climate, size, freq, browsing, fecundity, landscape) %>% 
+                          summarise(sd = sd(prop),
+                                    prop = mean(prop)) %>% 
+                          mutate(thresh = 100*thresh,
+                                 pick = ifelse(thresh == -50, "yes", "no")))
+  }
+  thresh.df <- bind_rows(thresh.df, prelim); rm(basal, prelim); gc()
   
-  # map.df ####
+  ## map.df ####
   
   # # fix malformed factor in shiretoko
   # if (landscapename == "stoko") ds.ls[["basal"]][ds.ls[["basal"]]$rid==35001 & ds.ls[["basal"]]$climate=="baseline" & ds.ls[["basal"]]$rep==1 & ds.ls[["basal"]]$size==10 & ds.ls[["basal"]]$freq==5 & ds.ls[["basal"]]$browsing==5 & ds.ls[["basal"]]$year==80 & ds.ls[["basal"]]$threshold=="above",][2,"fecundity"] <- factor("50", levels=c(100,50,20,10))
@@ -354,49 +425,174 @@ for (landscape_i in 1:3) {
   print("finished a landscape"); gc()
   
   
-}; saveRDS(overtime.ls, "results/datasets/overTime.ls.RDATA"); rm(overtime.ls)
+}; saveRDS(overtime.ls, "results/datasets/overTime.ls.RDATA"); write_csv(thresh.df, "results/datasets/thresh.df.csv"); rm(overtime.ls, thresh.df)
 
-# Patch sizes ####
-### for stoko + bgd ####
 
-rep.i <- 1
-patchlist <- data.frame()
-for (rep.i in 1:5) {
-  mgmt.full.prelim <- read_csv(paste0("../prep/data/bgd_rep", rep.i, "_level16.csv")) %>% 
-    group_by(unique, mod.size, mod.freq, mgmt.rep, agent) %>% mutate(sum=sum(n())) %>% ungroup() %>% filter(sum>4) %>% # filter out patches smaller than 0.5 ha
-    dplyr::select(unique, sum, year, mod.size, mod.freq, landscape) %>% 
-    distinct() %>% 
-    mutate(rep = rep.i) %>% 
-    rename(n_cells_soll = sum, size = mod.size, freq=mod.freq, patchID=unique) 
-  patchlist <- bind_rows(patchlist, mgmt.full.prelim); rm(mgmt.full.prelim)
-  print(rep.i)
-}
-patchlist %>% summary(); nrow(patchlist); nrow(patchlist %>% ungroup() %>% distinct())
-saveRDS(patchlist %>% distinct(), "results/datasets/patchlist_bgd.RDATA")
+## Based on overtime.ls ####
+overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 
-### for grte ####
-landscapename <- "grte"
-i<-1; rep<-1
-patchlist <- data.frame()
-for (rep in c(1:5)) { 
-  rep_i <- rep
-  level <- data.frame()
-  for (i in c(1:16)) { 
-    mgmt.full <- bind_rows(read_csv(paste0("../prep/data/grte_rep", rep_i, "_level", i,"_fire.csv")), 
-                           read_csv(paste0("../prep/data/grte_rep", rep_i, "_level", i,"_bite.csv"))) %>%
-      group_by(unique, mod.size, mod.freq, mgmt.rep, agent) %>% mutate(sum=sum(n())) %>% ungroup() %>% filter(sum>4) %>% # filter out patches smaller than 0.5 ha
-      dplyr::select(unique, sum, year, mod.size, mod.freq, landscape) %>% 
-      mutate(rep=rep_i) %>% 
-      distinct() %>% 
-      rename(n_cells_soll = sum, size = mod.size, freq=mod.freq, patchID=unique)
-    level<-bind_rows(level, mgmt.full); rm(mgmt.full)
-    print(i)
-  }
-  saveRDS(level, paste0("results/datasets/grte_patchlist_rep", rep_i, ".RDATA"))
-  patchlist <- bind_rows(patchlist, level); rm(level)
-} 
-patchlist %>% summary(); nrow(patchlist); nrow(patchlist %>% distinct())
-saveRDS(patchlist %>% distinct(), "results/datasets/patchlist_grte.RDATA")
+### singleProcess.df ####
+singleProcess.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+  filter(year==80, climate=="baseline") %>% 
+  filter(freq==1, fecundity==100, browsing==1) %>% 
+  pivot_longer(cols=names(response.colors)) %>% 
+  group_by(landscape, size, name, rep) %>% 
+  summarise(value=mean(value)) %>% ungroup() %>% 
+  rename(mod = size, 'Disturbance size'=value) %>% 
+  full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+              filter(year==80, climate=="baseline") %>% 
+              filter(size==1, fecundity==100, browsing==1) %>% 
+              pivot_longer(cols=names(response.colors)) %>% 
+              group_by(landscape, freq, name, rep) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              rename(mod=freq, 'Disturbance frequency'=value)) %>% 
+  full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+              filter(year==80, climate=="baseline") %>% 
+              filter(size==1, freq==1, browsing==1) %>% 
+              pivot_longer(cols=names(response.colors)) %>% 
+              group_by(landscape, fecundity, name, rep) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              rename(mod=fecundity, 'Seed production decrease'=value) %>% 
+              mutate(mod=case_match(mod, "100"~"1", "50"~"2", "20"~"5", "10"~"10"))) %>% 
+  full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>% 
+              filter(year==80, climate=="baseline") %>% 
+              filter(size==1, freq==1, fecundity==100) %>% 
+              pivot_longer(cols=names(response.colors)) %>% 
+              group_by(landscape, browsing, name, rep) %>% 
+              summarise(value=mean(value)) %>% ungroup() %>% 
+              rename(mod=browsing, 'Sapling growth limitations'=value)) %>%
+  pivot_longer(cols=5:8, names_to = "process") %>% 
+  mutate(value=100-value*100,
+         landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+         landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton")),
+         process = factor(process, levels=c("Disturbance size", "Disturbance frequency", 
+                                            "Seed production decrease", "Sapling growth limitations"))) 
+write_csv(singleProcess.df, "results/datasets/singleProcess.df.csv")
+
+
+### dyn.df ####
+overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
+patches <- bind_rows(readRDS("results/datasets/patch_bgd_backup.RDATA"),
+                     readRDS("results/datasets/patch_grte_backup.RDATA"),
+                     readRDS("results/datasets/patch_stoko_backup.RDATA")); head(patches)
+
+patchlist <- bind_rows(readRDS("results/datasets/patchlist_bgd.RDATA"),
+                       readRDS("results/datasets/patchlist_grte.RDATA"),
+                       readRDS("results/datasets/patchlist_stoko.RDATA")); head(patchlist)
+
+# actually forested area: correction factor for GRTE
+forest.ha.df <- patches %>%
+  inner_join(patchlist) %>%
+  inner_join(areas) %>%
+  mutate(pct=n_cells/n_cells_soll) %>% # what pct of targeted cells was actually disturbed? (proxy for forested area)
+  group_by(year, landscape, climate, size, freq, browsing, fecundity, rep) %>%
+  summarise(area=mean(area),
+            forest.ha = mean(pct)*mean(area),
+            n_patches = length(unique(patchID))) %>% ungroup() %>%
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1"))),
+         forest.ha = ifelse(landscape != "grte", area, forest.ha), # only apply this correction for GRTE
+         forest.ha = ifelse(is.na(forest.ha), area, forest.ha)); head(forest.ha.df); summary(forest.ha.df)
+
+patch.df <- patches %>%
+  filter(killed_ba > 0) %>%
+  group_by(landscape, climate, rep, size, freq, browsing, fecundity, year) %>% # don't group by agent
+  summarise(area_disturbed = sum(n_cells)) %>%
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>%
+  inner_join(forest.ha.df) %>%
+  mutate(dist.rate = area_disturbed/forest.ha, # already in % (because area_disturbed in 100 m^2, forest.ha in ha
+         dist.rate = ifelse(dist.rate > 100, 100, dist.rate)) %>%
+  mutate(keep = ifelse(forest.ha > area*0.1, "yes", "no")) %>% # exclude years where forest area drops below 10%
+  filter(keep == "yes"); summary(patch.df)
+# combine with vegetation data
+dist.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>%
+  filter(year==80) %>% dplyr::select(-year) %>%
+  full_join(patch.df %>%
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>% # take mean over all simulation years
+              summarise(n_year = length(unique(year)),
+                        dist.dyn = mean(dist.rate)),
+            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%
+  pivot_longer(9:11) %>%
+  mutate(dist.dyn = ifelse(is.na(dist.dyn), 0, dist.dyn)); summary(dist.dyn.df)
+
+# recruitment rate
+regen.df <- bind_rows(readRDS("results/datasets/regen_bgd_backup.RDATA"),
+                      readRDS("results/datasets/regen_grte_backup.RDATA"),
+                      readRDS("results/datasets/regen_stoko_backup.RDATA")) %>%
+  mutate(size = factor(size, levels = rev(c("10", "5", "2", "1"))),
+         freq = factor(freq, levels = rev(c("10", "5", "2", "1"))),
+         fecundity = factor(fecundity, levels = c("100", "50", "20", "10")),
+         browsing = factor(browsing, levels = rev(c("10", "5", "2", "1")))) %>%
+  inner_join(forest.ha.df) %>%
+  mutate(correction = area/forest.ha,
+         recruited_mean = recruited_mean * correction); summary(regen.df)
+head(regen.df)
+# combine with vegetation data
+regen.dyn.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]],overtime.ls[["stoko"]]) %>%
+  filter(year==80) %>% dplyr::select(-year) %>%
+  full_join(regen.df %>%
+              group_by(climate, size, freq, browsing, fecundity, landscape, rep, area) %>%
+              summarise(regen.dyn = mean(recruited_mean),
+                        n_year = length(unique(year))),
+            by=c("climate", "rep", "size", "freq", "browsing", "fecundity", "landscape")) %>%
+  pivot_longer(9:11) %>%
+  mutate(regen.dyn = ifelse(is.na(regen.dyn), 0,
+                            ifelse(is.infinite(regen.dyn), 0, regen.dyn)))
+
+dyn.df <- dist.dyn.df %>%
+  dplyr::select(-n_year) %>%
+  full_join(regen.dyn.df) %>%
+  drop_na(); unique(dyn.df$climate) # get rid of 1 run (grte, "baseline_rep1_size1_freq10_browsing1_fecundity10")
+
+rm(patches, patchlist, forest.ha.df); 1+1
+write_csv(dyn.df, "results/datasets/dyn.df.csv")
+
+### dyn.effect ####
+dyn.df <- read_csv("results/datasets/dyn.df.csv")
+dyn.effect <- dyn.df %>% 
+  filter(climate=="baseline") %>% 
+  dplyr::select(-climate, -identifier, -n_year) %>% 
+  rename(baseline=value, 
+         dist.dyn_baseline=dist.dyn,
+         regen.dyn_baseline=regen.dyn) %>% 
+  full_join(dyn.df %>% filter(climate=="hotdry") %>% 
+              dplyr::select(-climate, -identifier, -n_year) %>% 
+              rename(hotdry=value, 
+                     dist.dyn_hotdry=dist.dyn,
+                     regen.dyn_hotdry=regen.dyn)) %>% 
+  mutate(baseline = 100-baseline*100, hotdry = 100-hotdry*100) %>% 
+  mutate(effect = hotdry-baseline); summary(dyn.effect) # positive when hotdry > baseline, i.e.,  amplifying effect
+write_csv(dyn.effect, "results/datasets/dyn.effect.csv")
+
+rm(dyn.df, dyn.effect)
+
+
+## Based on map.df ####
+landscape_i <- 1
+elev.df <- data.frame()
+for (landscape_i in 1:3) {
+  landscapename <- landscapes[landscape_i]
+  map.df <- readRDS(paste0("results/datasets/map.df_", landscapename, "_extended.RDATA"))
+  df.i <- rid.df %>% 
+    group_by(landscape) %>% 
+    mutate(step = round(dist.treeline,-1)) %>% ungroup() %>% # group rids in elevation steps of 10 m
+    inner_join(map.df[sample(1:nrow(map.df), nrow(map.df)*1), 
+                      c("x", "y", "elevation", "rid", "landscape", "dist.treeline", "rep", "climate", names(response.colors))]) %>% 
+    pivot_longer(cols=names(response.colors)) %>% 
+    mutate(value = ifelse(value == "no", 0, 1)) %>% 
+    group_by(landscape, step, climate, name, rep) %>% # , size, freq, browsing, fecundity
+    summarise(chances = n(), # total number of rids in this elevation step (varies between elevation steps)
+              changed = sum(value), # total number of rids that experienced change per elevation step
+              pct = changed/chances*100) %>% ungroup() # pct of rids that experienced change per elevation step
+  elev.df <- bind_rows(elev.df, df.i); rm(df.i, map.df)
+  if (landscape_i == 3) write_csv(elev.df, "results/datasets/elev.df.csv")
+  print(landscapename); rm(landscapename)
+}; gc()
 
 
 

@@ -1,14 +1,9 @@
 results/
 raw_data/
-old_markdowns/
+archive/
 *.Rproj.user
 *.html
 *.Rhistory
 *.RData
 .Rproj.user
-X_2ndStudy_analysis.Rmd
-X_2ndStudy_diagnostics.Rmd
-X_diagnostic_plots.R
-X_trial_surface.R
-X_Misc.R
-X_test.R
+

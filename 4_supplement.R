@@ -3,32 +3,6 @@
 ## sensitivity analysis for basal area decline threshold ####
 # compare %landscape changed in year 80 between 5 different threshold levels for (3 landscapes x 3 scenarios x 5 levels)
 # figure: 3x3 panels with 5 bars each -> mean of pct landscape changed, SD over reps as errorbar
-landscape_i <- 1; thresh <- -0.8
-thresh.df <- data.frame()
-for (landscape_i in c(1:3)) {
-  landscapename <- landscapes[landscape_i]
-  basal <- readRDS(paste0("results/datasets/ds.ls_", landscapename,"_backup.RDATA"))[[1]] %>% 
-    filter(year == 80,
-           identifier %in% c(paste0("baseline_rep", 1:5, "_size2_freq2_browsing2_fecundity50"),
-                             paste0("baseline_rep", 1:5, "_size5_freq5_browsing5_fecundity20"),
-                             paste0("baseline_rep", 1:5, "_size10_freq10_browsing10_fecundity10"))); gc()
-  print(paste("Loaded", landscapename))
-  prelim <- data.frame()
-  for (thresh in c(-0.8, -0.65, -0.5, -0.35, -0.2)) {
-    prelim <- bind_rows(prelim, basal %>% 
-                          mutate(threshold = ifelse(basal_diff < thresh, "below", "above")) %>%  # count RUs where basal area dropped by more than <thresh> from reference; unidirectional: only if DECREASE
-                          group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape) %>%
-                          summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
-                          filter(threshold == "below") %>% ungroup() %>% # only keep proportion of changed landscape
-                          group_by(climate, size, freq, browsing, fecundity, landscape) %>% 
-                          summarise(sd = sd(prop),
-                                    prop = mean(prop)) %>% 
-                          mutate(thresh = 100*thresh,
-                                 pick = ifelse(thresh == -50, "yes", "no")))
-  }
-  thresh.df <- bind_rows(thresh.df, prelim); rm(basal, prelim); gc()
-  
-}; write_csv(thresh.df, "results/datasets/thresh.df.csv"); rm(landscapename, landscape_i)
 
 thresh.df <- read_csv("results/datasets/thresh.df.csv")
 png(paste0("results/figures/suppl_figures/methods_structureChange_5thresholds.png"), res=250,
@@ -38,8 +12,8 @@ thresh.df %>%
          scenario = paste0("size*", size, "; freq*", freq, "; seed production/", fecundity, "\nsapling height growth limitations*", browsing),
          scenario = case_match(scenario, 
                                "size*2; freq*2; seed production/2\nsapling height growth limitations*2" ~ "Lowest levels of modification",
-                                    "size*5; freq*5; seed production/5\nsapling height growth limitations*5" ~ "Intermediate levels of modification",
-                                    "size*10; freq*10; seed production/10\nsapling height growth limitations*10" ~ "Highest levels of modification"),
+                               "size*5; freq*5; seed production/5\nsapling height growth limitations*5" ~ "Intermediate levels of modification",
+                               "size*10; freq*10; seed production/10\nsapling height growth limitations*10" ~ "Highest levels of modification"),
          scenario = factor(scenario, levels=c("Lowest levels of modification",  "Intermediate levels of modification", "Highest levels of modification")),
          landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
          landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
@@ -51,7 +25,7 @@ thresh.df %>%
   #scale_linewidth_manual(values=c("yes"=1, "no"=.5)) +
   scale_fill_distiller(palette = "RdPu", direction=1) +
   scale_x_continuous(breaks=c(-0.8, -0.65, -0.5, -0.35, -0.2)*100) +
-  labs(y="Percentage of landscape changed [%]", x="Threshold for structural decline detection [%]") +
+  labs(y="Landscape changed [%]", x="Threshold for defining structural decline\n[basal area decline from reference, %]") +
   theme_bw()
 # errorbar: mean +/- SD over all 5 reps
 dev.off()
@@ -61,7 +35,6 @@ dev.off()
 
 ## contour for every landscape ####
 dyn.df <- read_csv("results/datasets/dyn.df.csv")
-
 
 i<-1; lscp<-"bgd"
 for (lscp in landscapes) { #, "hotdry"
@@ -94,14 +67,16 @@ for (lscp in landscapes) { #, "hotdry"
       rename(Change = value)
     p1<- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",
                  colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21) %>% 
-      layout(title = paste0(lscp, ": ", names(response.colors)[i]), 
-             xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
-                          ticktext = c(10^c(-3:1),100),
-                          tickvals = c(-3:1, log10(100))),
-             yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
-                          tickvals = c(1:5*10))) %>% 
-      colorbar(title="Landscape changed [%]"); p1
-    save_image(p1, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_", lscp, ".png"), scale=1, 
+      layout(# title = paste0(lscp, ": ", names(response.colors)[i]), 
+        xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+                     ticktext = c(10^c(-3:1),100),
+                     tickvals = c(-3:1, log10(100))),
+        yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+                     tickvals = c(1:5*10))) %>% 
+      colorbar(title="Change [%]", limits = c(0, 100),
+               titlefont = list(size = 50), tickfont = list(size = 50)); p1
+    save_image(p1, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_singleLandscapes_", 
+                                 i, "_", lscp, ".png"), scale=1, 
                width=800, height=700) 
     rm(p1, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d)
   }
@@ -152,31 +127,6 @@ for (clim in c("baseline")) { #, "hotdry"
 
 ## spatial pattern ####
 
-### data ####
-landscape_i <- 1
-elev.df <- data.frame()
-for (landscape_i in 1:3) {
-  landscapename <- landscapes[landscape_i]
-  map.df <- readRDS(paste0("results/datasets/map.df_", landscapename, "_extended.RDATA"))
-  df.i <- rid.df %>% 
-    group_by(landscape) %>% 
-    mutate(step = round(dist.treeline,-1)) %>% ungroup() %>% # group rids in elevation steps of 10 m
-    inner_join(map.df[sample(1:nrow(map.df), nrow(map.df)*1), 
-                      c("x", "y", "elevation", "rid", "landscape", "dist.treeline", "rep", "climate", names(response.colors))]) %>% 
-    pivot_longer(cols=names(response.colors)) %>% 
-    mutate(value = ifelse(value == "no", 0, 1)) %>% 
-    group_by(landscape, step, climate, name, rep) %>% # , size, freq, browsing, fecundity
-    summarise(chances = n(), # total number of rids in this elevation step (varies between elevation steps)
-              changed = sum(value), # total number of rids that experienced change per elevation step
-              pct = changed/chances*100) %>% ungroup() # pct of rids that experienced change per elevation step
-  elev.df <- bind_rows(elev.df, df.i); rm(df.i, map.df)
-  if (landscape_i == 3) write_csv(elev.df, "results/datasets/elev.df.csv")
-  print(landscapename); rm(landscapename)
-}; gc()
-
-
-
-### plots ####
 elev.df <- read_csv("results/datasets/elev.df.csv") 
 
 png("results/figures/suppl_figures/Q2_distanceFromTreeline_allLandscapes_simplified_baselineClimate.png", res=200,
@@ -188,10 +138,9 @@ elev.df %>%
                               ifelse(step > 1000, ">1000", step))),
          step = factor(step, levels=rev(c("0-500", "501-1000", ">1000")))) %>% #summary()
   group_by(rep, step, landscape, name) %>%
-  summarise(pct.sd = sd(pct),
-            pct = mean(pct)) %>% ungroup() %>% 
+  summarise(pct = mean(pct)) %>% ungroup() %>%
   group_by(step, landscape, name) %>%
-  summarise(pct = mean(pct), pct.sd = mean(pct.sd)) %>% ungroup() %>% 
+  summarise(pct.sd = sd(pct), pct = mean(pct)) %>% ungroup() %>% 
   mutate(landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
          landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
   ggplot(aes(x=landscape, y=pct, fill=step)) +
@@ -202,11 +151,101 @@ elev.df %>%
                              "501-1000"= "#983520",
                              "0-500"="#938f8e")) +
   facet_wrap(~name, scales="free") +
-  labs(x="", y="Percentage changed [%]", fill="Distance from treeline") +
+  labs(x="", y="Landscape changed [%]", fill="Distance from treeline") +
   theme_bw() +
   theme(legend.position = "bottom")
 dev.off()
 
+
+# Q3 ####
+
+## contour plots for absolute forest change under hotdry runs ####
+i<-1; clim <- "baseline"
+for (i in 1:3) {
+  a <- dyn.effect %>% 
+    filter(name == names(response.colors)[i]) %>% 
+    dplyr::select(dist.dyn_baseline, regen.dyn_baseline, hotdry, landscape) %>% 
+    rename(dist.dyn = 1,
+           regen.dyn = 2) %>% 
+    mutate(dist.dyn = log10(dist.dyn))
+  
+  (hulls <- a %>%
+      group_by(landscape) %>%
+      do(create_hull(.)) %>% 
+      mutate(landscape = case_match(landscape, "bgd"~"Berchtesgaden", "stoko"~"Shiretoko", "grte"~"Grand Teton"),
+             landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton")))) 
+  
+  # Convert your hulls to an sf object for geometric operations
+  hulls_sf <- st_as_sf(hulls, coords = c("dist.dyn", "regen.dyn"), crs = 4326)
+  # Calculate the convex hull for each landscape if not already done
+  hulls_geom <- hulls_sf %>%
+    mutate(abbrev = ifelse(landscape == "Shiretoko", "STK",
+                           ifelse(landscape == "Berchtesgaden", "BGD", "GTE"))) %>% 
+    group_by(landscape, abbrev) %>%
+    summarize(geometry = st_combine(geometry)) %>%
+    st_convex_hull()  # Compute the convex hull of each landscape
+  # Calculate the centroid of each landscape's convex hull
+  centroids <- st_centroid(hulls_geom)
+  # Extract the coordinates of the centroids
+  centroid_coords <- st_coordinates(centroids)
+  # Add these centroids to the hulls_geom object for later plotting
+  hulls_geom$centroid_x <- centroid_coords[, 1]
+  hulls_geom$centroid_y <- centroid_coords[, 2]
+  
+  data.loess <- loess(hotdry ~ dist.dyn * regen.dyn, data = a)
+  summary(data.loess)
+  # Create a sequence of incrementally increasing (by 0.3 units) values for both wt and hp
+  xgrid <- seq(min(a$dist.dyn), max(a$dist.dyn), length.out=100)
+  ygrid <- seq(min(a$regen.dyn), max(a$regen.dyn), length.out=100)
+  # Generate a dataframe with every possible combination of wt and hp
+  data.fit <-  expand.grid(dist.dyn = xgrid, regen.dyn = ygrid)
+  # Feed the dataframe into the loess model and receive a matrix output with estimates of acceleration for each combination of wt and hp
+  mtrx3d <-  predict(data.loess, newdata = data.fit)
+  # Abbreviated display of final matrix
+  mtrx3d[1:4, 1:4]
+  mtrx.melt <- melt(mtrx3d, id.vars = c('dist.dyn', 'regen.dyn'), measure.vars = 'hotdry')
+  names(mtrx.melt) <- c('dist.dyn', 'regen.dyn', 'hotdry')
+  # Return data to numeric form
+  mtrx.melt$dist.dyn <- as.numeric(str_sub(mtrx.melt$dist.dyn, str_locate(mtrx.melt$dist.dyn, '=')[1,1] + 1))
+  mtrx.melt$regen.dyn <-  as.numeric(str_sub(mtrx.melt$regen.dyn, str_locate(mtrx.melt$regen.dyn, '=')[1,1] + 1))
+  head(mtrx.melt)
+  
+  p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~hotdry, type = "contour",  contours = list(showlines = FALSE),
+                colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
+    layout(#title = names(response.colors)[i], 
+      xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+                   zerolinecolor=toRGB("grey93"),
+                   ticktext = c(10^c(-3:1),100),
+                   tickvals = c(-3:1, log10(100)),
+                   titlefont = list(size = 50), tickfont = list(size = 50)),
+      yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+                   tickvals = c(1:5*10),
+                   range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
+                   titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
+    colorbar(title="Change [%]", limits = c(0, 100),
+             titlefont = list(size = 50), tickfont = list(size = 50)); p1
+  p2 <- p1 %>%
+    add_trace(data = hulls, x = ~dist.dyn, y = ~regen.dyn,
+              mode = "lines", type = "scatter",
+              line = list(width = 2),  # Line width
+              color = ~factor(landscape),
+              colors="grey30",
+              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
+              inherit=F, showlegend=F); p2 
+  p3 <- p2 %>%
+    add_text(data = hulls_geom, inherit=F,
+             x = ~centroid_x, y = ~centroid_y, text = ~abbrev,
+             mode = "text", showlegend = FALSE,
+             textfont = list(size = 100, bold=TRUE, color=toRGB("grey10"))); p3
+  if (i == 1) {
+    save_image(p3, file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_hotdry.png"), scale=1, 
+               width=1900, height=1700) 
+  } else {
+    save_image(p2, file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_hotdry.png"), scale=1, 
+               width=1900, height=1700) 
+  } 
+  rm(p1, p2, p3, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, centroids, hulls_geom, hulls_sf, centroid_coords) #, p3
+}
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Diagnostic plots ###########################################################################################################################################

@@ -17,7 +17,6 @@ library(reshape2)
 library(reticulate); reticulate::use_miniconda('r-reticulate') # to save plotly graphs as png
 reticulate::py_run_string("import sys")
 library(scales)
-library(beepr)
 
 "%ni%" <- Negate("%in%")
 options(dplyr.summarise.inform = FALSE, readr.show_col_types = FALSE)
@@ -31,7 +30,7 @@ names(colors.landscape) <- c("Berchtesgaden", "Grand Teton", "Shiretoko")
 # areas <- c(8645, 42586, 35676) # same order as landscapes
 #
 
-# set up ####
+
 # Most common species ###
 # (common.bgd <- dbConnect(RSQLite::SQLite(), "raw_data/breakingTheSystem_BGD_Results/data1/output.sqlite") %>%
 #    tbl(., "landscape") %>% collect() %>%
