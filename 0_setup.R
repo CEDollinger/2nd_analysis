@@ -10,6 +10,7 @@ library(plotly)
 library(stringr)
 library(sf)
 library(reshape2)
+library(concaveman)
 # install.packages('reticulate')                                            # only needs to be run once
 # reticulate::install_miniconda()                                           # only needs to be run once
 # reticulate::conda_install('r-reticulate', 'python-kaleido==0.1.*')        # only needs to be run once

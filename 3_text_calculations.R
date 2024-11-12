@@ -50,6 +50,12 @@ dyn.df %>%
   # arrange(value) %>% 
   summary()
 
+# reduction in regeneration rate in Grand Teton (no disturbance change)
+dyn.df %>% 
+  filter(landscape == "grte") %>% 
+  filter(size == 1, freq == 1) %>% 
+  summarise(drop = 1-min(regen.dyn)/max(regen.dyn))
+
 rm(dyn.df)
 
 
