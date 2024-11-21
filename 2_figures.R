@@ -1,12 +1,14 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Q1: how important are the processes? ###########################################################################################################################################
+# Q1: how important are the individual processes? ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv")
+singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>% 
+  mutate(landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton")))
 
 singleProcess.mean <- singleProcess.df %>% 
   group_by(landscape, mod, name, process) %>% 
   summarise(value=mean(value)) %>% ungroup() %>% 
   mutate(type = ifelse(process %in% c("Disturbance size", "Disturbance frequency"), "Disturbance", "Regeneration"))
+
 png("results/figures/Q1_singleProcesses.png", res=200,
     height=1600, width=2200)
 singleProcess.df %>%
@@ -19,7 +21,7 @@ singleProcess.df %>%
   geom_point(data=singleProcess.mean %>% filter(name != names(response.colors)[3]),
              size=3, show.legend = T) + #aes(shape=type)
   facet_grid(landscape~name, scales="free_y", switch = "y") +
-  labs(y="Landscape changed [%]", x="Modification", col="Process", shape="Process") +
+  labs(y="Landscape changed [%]", x="Response level", col="Process", shape="Process") +
   scale_x_continuous(labels=c("Ref.", "*2", "*5", "*10"), breaks=c(1,2,5,10)) +
   scale_color_manual(values=c('Disturbance size' = "#b35806",
                               'Disturbance frequency' = "#f46d43",
@@ -50,7 +52,7 @@ singleProcess.df %>%
   geom_point(data=singleProcess.mean %>% filter(name == names(response.colors)[3]),
              size=3, show.legend = T) + #aes(shape=type)
   facet_grid(landscape~name, scales="free_y", switch = "y") +
-  labs(y="Landscape changed [%]", x="Modification", col="Process", shape="Process") +
+  labs(y="Landscape changed [%]", x="Response level", col="Process", shape="Process") +
   scale_x_continuous(labels=c("Ref.", "*2", "*5", "*10"), breaks=c(1,2,5,10)) +
   scale_color_manual(values=c('Disturbance size' = "#b35806",
                               'Disturbance frequency' = "#f46d43",
