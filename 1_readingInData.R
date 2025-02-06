@@ -129,7 +129,7 @@ for (landscape_i in c(1:3)) {
                n_rid = length(unique(rid))) %>% ungroup()
       
       
-      # prop of trees count > 50
+      # prop of trees count <50
       ds.forest.i <- ds.i %>%
         group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
         summarise(count_sum_c = sum(count_ha)) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100

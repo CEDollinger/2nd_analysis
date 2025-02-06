@@ -13,6 +13,14 @@ rm(single.Process.df)
 # Q2: interaction ####
 dyn.df <- read_csv("results/datasets/dyn.df.csv")
 
+# variability in disturbance versus regeneration rates under reference conditions
+dyn.df %>% 
+  filter(name == "1. Structure\nBasal area decreased by >50 % from reference",
+         climate=="baseline", size==1, freq==1, browsing==1, fecundity==100) %>% 
+  group_by(landscape) %>%                                   
+  summarise(dist.cv = sd(dist.dyn)/mean(dist.dyn),
+            regen.cv = sd(regen.dyn)/mean(regen.dyn))
+
 # mean, min/max of percentage landscape changed
 dyn.df %>% 
   filter(climate=="baseline") %>% 
@@ -46,9 +54,8 @@ dyn.df %>%
   mutate(value=100-value*100) %>% 
   filter(climate=="baseline", 
          name == names(response.colors)[1],
-         dist.dyn >= 2) %>% 
-  # arrange(value) %>% 
-  summary()
+         dist.dyn >= 1) %>% 
+  arrange(value)
 
 # reduction in regeneration rate in Grand Teton (no disturbance change)
 dyn.df %>% 

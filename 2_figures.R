@@ -2,7 +2,13 @@
 # Q1: how important are the individual processes? ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>% 
-  mutate(landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton")))
+  mutate(landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
+  mutate(name = case_match(name, names(response.colors)[1] ~ "Structure", names(response.colors)[2] ~ "Composition",
+                           names(response.colors)[3] ~ "Forest loss")) %>% 
+  mutate(name = factor(name, levels = c("Structure", "Composition", "Forest loss"))) %>% 
+  mutate(process = case_match(process, "Seed production decrease"~"Seed production", "Sapling growth limitations" ~ "Sapling growth",
+                              "Disturbance frequency"~"Disturbance frequency", "Disturbance size"~"Disturbance size")) %>% 
+  mutate(process = factor(process, levels=c("Disturbance frequency", "Disturbance size", "Seed production", "Sapling growth")))
 
 singleProcess.mean <- singleProcess.df %>% 
   group_by(landscape, mod, name, process) %>% 
@@ -12,21 +18,21 @@ singleProcess.mean <- singleProcess.df %>%
 png("results/figures/Q1_singleProcesses.png", res=200,
     height=1600, width=2200)
 singleProcess.df %>%
-  filter(name != names(response.colors)[3]) %>% 
+  filter(name != "Forest loss") %>% 
   ggplot(aes(x=as.numeric(mod), y=value, col=process)) +
   geom_line(aes(group=paste(rep, process)),
             linewidth=0.2, alpha=0.6) +
-  geom_line(data=singleProcess.mean %>% filter(name != names(response.colors)[3]),
+  geom_line(data=singleProcess.mean %>% filter(name != "Forest loss"),
             linewidth=0.5, alpha=1) +
-  geom_point(data=singleProcess.mean %>% filter(name != names(response.colors)[3]),
+  geom_point(data=singleProcess.mean %>% filter(name != "Forest loss"),
              size=3, show.legend = T) + #aes(shape=type)
   facet_grid(landscape~name, scales="free_y", switch = "y") +
-  labs(y="Landscape changed [%]", x="Response level", col="Process", shape="Process") +
-  scale_x_continuous(labels=c("Ref.", "*2", "*5", "*10"), breaks=c(1,2,5,10)) +
+  labs(y="Forest change [%]", x="Level", col="Process", shape="Process") +
+  scale_x_continuous(labels=c("Ref.", "2", "5", "10"), breaks=c(1,2,5,10)) +
   scale_color_manual(values=c('Disturbance size' = "#b35806",
                               'Disturbance frequency' = "#f46d43",
-                              'Seed production decrease'= "#542788",
-                              'Sapling growth limitations'="#2166ac")) +
+                              'Seed production'= "#542788",
+                              'Sapling growth'="#2166ac")) +
   theme_bw() +
   theme(legend.position = "top", 
         axis.title = ggplot2::element_text(size = 16),
@@ -43,21 +49,21 @@ dev.off()
 png("results/figures/suppl_figures/Q1_singleProcesses_forestloss.png", res=220,
     height=1200, width=1800)
 singleProcess.df %>%
-  filter(name == names(response.colors)[3]) %>% 
+  filter(name == "Forest loss") %>% 
   ggplot(aes(x=as.numeric(mod), y=value, col=process)) +
   geom_line(aes(group=paste(rep, process)),
             linewidth=0.2, alpha=0.6) +
-  geom_line(data=singleProcess.mean %>% filter(name == names(response.colors)[3]),
+  geom_line(data=singleProcess.mean %>% filter(name == "Forest loss"),
             linewidth=0.5, alpha=1) +
-  geom_point(data=singleProcess.mean %>% filter(name == names(response.colors)[3]),
+  geom_point(data=singleProcess.mean %>% filter(name == "Forest loss"),
              size=3, show.legend = T) + #aes(shape=type)
   facet_grid(landscape~name, scales="free_y", switch = "y") +
-  labs(y="Landscape changed [%]", x="Response level", col="Process", shape="Process") +
-  scale_x_continuous(labels=c("Ref.", "*2", "*5", "*10"), breaks=c(1,2,5,10)) +
+  labs(y="Forest change [%]", x="Level", col="Process", shape="Process") +
+  scale_x_continuous(labels=c("Ref.", "2", "5", "10"), breaks=c(1,2,5,10)) +
   scale_color_manual(values=c('Disturbance size' = "#b35806",
                               'Disturbance frequency' = "#f46d43",
-                              'Seed production decrease'= "#542788",
-                              'Sapling growth limitations'="#2166ac")) +
+                              'Seed production'= "#542788",
+                              'Sapling growth'="#2166ac")) +
   theme_bw() +
   theme(legend.position = "top")
 dev.off()
@@ -140,12 +146,12 @@ for (i in 1:3) {
   p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",  contours = list(showlines = FALSE),
                 colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
     layout(#title = names(response.colors)[i], 
-      xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+      xaxis = list(title = 'Disturbance rate [% yr^-1]',
                    zerolinecolor=toRGB("grey93"),
                    ticktext = c(10^c(-3:1),100),
                    tickvals = c(-3:1, log10(100)),
                    titlefont = list(size = 50), tickfont = list(size = 50)),
-      yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+      yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
                    tickvals = c(1:5*10),
                    range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
                    titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
@@ -205,13 +211,10 @@ for (i in 1:3) {
   if (i == 3) {
     save_image(p3b, file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale=1, 
                width=1900, height=1700) 
-  } else if(i == 1) {
+  } else {
     save_image(p3a, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale=1, 
                width=1900, height=1700) 
-  } else {
-    save_image(p2, file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale=1, 
-               width=1900, height=1700) 
-  }
+  } 
   rm(p1, p2, p3a, p3b, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, bgd.hull, grte.hull, centroids, hulls_geom, hulls_sf, centroid_coords)
 }
 rm(dyn.df, create_hull)
@@ -327,7 +330,7 @@ for (i in 1:3) {
                 # colors = "PiYG", reversescale=T
   ) %>% 
     layout(#title = paste0(names(response.colors)[i]), 
-      xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+      xaxis = list(title = 'Disturbance rate [% yr^-1]',
                    zerolinecolor=toRGB("grey93"),
                    linecolor = "black",
                    linewidth = 0.5,
@@ -335,7 +338,7 @@ for (i in 1:3) {
                    ticktext = c(10^c(-3:1),100),
                    tickvals = c(-3:1, log10(100)),
                    titlefont = list(size = 50), tickfont = list(size = 50)),
-      yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+      yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
                    linecolor = "black",
                    linewidth = 0.5,
                    mirror = T,

@@ -68,10 +68,10 @@ for (lscp in landscapes) { #, "hotdry"
     p1<- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",
                  colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21) %>% 
       layout(# title = paste0(lscp, ": ", names(response.colors)[i]), 
-        xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+        xaxis = list(title = 'Disturbance rate [% yr^-1]',
                      ticktext = c(10^c(-3:1),100),
                      tickvals = c(-3:1, log10(100))),
-        yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+        yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
                      tickvals = c(1:5*10))) %>% 
       colorbar(title="Change [%]", limits = c(0, 100),
                titlefont = list(size = 50), tickfont = list(size = 50)); p1
@@ -143,12 +143,12 @@ mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100,
 p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",  contours = list(showlines = FALSE),
               colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
   layout( 
-    xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+    xaxis = list(title = 'Disturbance rate [% yr^-1]',
                  zerolinecolor=toRGB("grey93"),
                  ticktext = c(10^c(-3:1),100),
                  tickvals = c(-3:1, log10(100)),
                  titlefont = list(size = 50), tickfont = list(size = 50)),
-    yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+    yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
                  tickvals = c(1:5*10),
                  range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
                  titlefont = list(size = 50), tickfont = list(size = 50))) %>% 
@@ -235,7 +235,7 @@ for (clim in c("baseline")) { #, "hotdry"
       scale_x_log10(breaks = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2, # year 1:80 *0.5, 1:10 *2, 1:5 *5, 1:2 *10
                     label = c(0.0001, 0.001, 0.01, 0.1, 1, 10, 50)*2) +
       ylim(0, 100) +
-      labs(y = "Landscape changed [%]", col = "Recruitment rate", title=paste0(names(response.colors)[i]),
+      labs(y = "Landscape changed [%]", col = "Regeneration rate", title=paste0(names(response.colors)[i]),
            x = paste0("Simulated disturbance rate [% yr^-1]\nAxis log10-transformed")) +
       theme_bw() +
       coord_cartesian(clip="off") +
@@ -358,12 +358,12 @@ for (i in 1:3) {
   p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~hotdry, type = "contour",  contours = list(showlines = FALSE),
                 colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
     layout(#title = names(response.colors)[i], 
-      xaxis = list(title = 'Disturbance rate [log10-transformed, % yr^-1]',
+      xaxis = list(title = 'Disturbance rate [% yr^-1]',
                    zerolinecolor=toRGB("grey93"),
                    ticktext = c(10^c(-3:1),100),
                    tickvals = c(-3:1, log10(100)),
                    titlefont = list(size = 50), tickfont = list(size = 50)),
-      yaxis = list(title = 'Recruitment rate [recruited ha^-1 yr^-1]',
+      yaxis = list(title = 'Regeneration rate [recruited ha^-1 yr^-1]',
                    tickvals = c(1:5*10),
                    range=range(mtrx.melt$regen.dyn, na.rm = TRUE),
                    titlefont = list(size = 50), tickfont = list(size = 50))) %>% 

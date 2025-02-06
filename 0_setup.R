@@ -11,10 +11,10 @@ library(stringr)
 library(sf)
 library(reshape2)
 library(concaveman)
-# install.packages('reticulate')                                            # only needs to be run once
-# reticulate::install_miniconda()                                           # only needs to be run once
-# reticulate::conda_install('r-reticulate', 'python-kaleido==0.1.*')        # only needs to be run once
-# reticulate::conda_install('r-reticulate', 'plotly', channel = 'plotly')   # only needs to be run once
+# install.packages('reticulate')                                            # only needs to be run the first time
+# reticulate::install_miniconda()                                           # -"-
+# reticulate::conda_install('r-reticulate', 'python-kaleido==0.1.*')        # -"-
+# reticulate::conda_install('r-reticulate', 'plotly', channel = 'plotly')   # -"-
 library(reticulate); reticulate::use_miniconda('r-reticulate') # to save plotly graphs as png
 reticulate::py_run_string("import sys")
 library(scales)
