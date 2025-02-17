@@ -1,6 +1,7 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Q1: how important are the individual processes? ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>% 
   mutate(landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton"))) %>% 
   mutate(name = case_match(name, names(response.colors)[1] ~ "Structure", names(response.colors)[2] ~ "Composition",
@@ -11,7 +12,7 @@ singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>%
   mutate(process = factor(process, levels=c("Disturbance frequency", "Disturbance size", "Seed production", "Sapling growth")))
 
 singleProcess.mean <- singleProcess.df %>% 
-  group_by(landscape, mod, name, process) %>% 
+  group_by(landscape, mod, name, process) %>% # average over all 5 replicates
   summarise(value=mean(value)) %>% ungroup() %>% 
   mutate(type = ifelse(process %in% c("Disturbance size", "Disturbance frequency"), "Disturbance", "Regeneration"))
 
@@ -80,11 +81,12 @@ dyn.df <- read_csv("results/datasets/dyn.df.csv")
 # baseline disturbance and regeneration rate by landscape
 baseline.drivers <- dyn.df %>% 
   filter(climate == "baseline", size == 1, freq == 1, fecundity == 100, browsing == 1) %>% 
-  group_by(landscape) %>% 
+  group_by(landscape) %>% # average over all 5 replicates
   summarise(dist = log10(mean(dist.dyn)),
             regen = mean(regen.dyn),
             Change = mean(value))
 
+# Create a function to compute the convex hull for a set of points
 create_hull <- function(data) {
   hull_indices <- chull(data$dist.dyn, data$regen.dyn)
   hull_indices <- c(hull_indices, hull_indices[1])  # Close the hull by connecting to the first point
@@ -97,7 +99,7 @@ for (i in 1:3) {
     filter(name == names(response.colors)[i],
            climate == "baseline") %>% 
     dplyr::select(dist.dyn, regen.dyn, value, landscape) %>% 
-    mutate(value=100-value*100, 
+    mutate(value=100-value*100, # convert from proportion of unchanged landscape to % of changed landscape
            dist.dyn = log10(dist.dyn))
   print(summary(a))
   
@@ -143,9 +145,10 @@ for (i in 1:3) {
   mtrx.melt <- mtrx.melt %>% mutate(value = ifelse(value > 100, 100, 
                                                    ifelse(value < 0, 0, value))) %>% 
     rename(Change = value); head(mtrx.melt)
+  
   p1 <- plot_ly(mtrx.melt, x = ~dist.dyn, y = ~regen.dyn, z = ~Change, type = "contour",  contours = list(showlines = FALSE),
                 colors = "Spectral", reversescale=T, zmin=0, zmax=100, ncontours=21, opacity = 1) %>% 
-    layout(#title = names(response.colors)[i], 
+    layout(
       xaxis = list(title = 'Disturbance rate [% yr^-1]',
                    zerolinecolor=toRGB("grey93"),
                    ticktext = c(10^c(-3:1),100),
@@ -160,7 +163,7 @@ for (i in 1:3) {
   
   # Berchtesgaden's and Grand Teton's hulls are calculated using the "concaveman" package
   bgd.hull <- a %>% 
-    mutate(dist.dyn = 10^dist.dyn) %>% 
+    mutate(dist.dyn = 10^dist.dyn) %>% # undo log10-transformation
     filter(landscape == "bgd") %>% 
     dplyr::select(1:2) %>% as.matrix() %>% 
     concaveman(length_threshold=10) %>% 
@@ -182,21 +185,18 @@ for (i in 1:3) {
               line = list(width = 2),  # Line width
               color = ~factor(landscape),
               colors="grey30",
-              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
               inherit=F, showlegend=F) %>% 
     add_trace(data=grte.hull, x = ~dist.dyn, y = ~regen.dyn,
               mode = "lines", type = "scatter",
               line = list(width = 2),  # Line width
               color = ~factor(landscape),
               colors="grey30",
-              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
               inherit=F, showlegend=F) %>% 
     add_trace(data=hulls[hulls$landscape=="Shiretoko",], x = ~dist.dyn, y = ~regen.dyn,
               mode = "lines", type = "scatter",
               line = list(width = 2),  # Line width
               color = ~factor(landscape),
               colors="grey30",
-              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
               inherit=F, showlegend=F); p2
   p3a <- p2 %>% 
     add_trace(data = baseline.drivers, x= ~dist, y= ~regen, # baseline driver rates by landscape
@@ -249,7 +249,7 @@ for (i in 1:3) {
              landscape = factor(landscape, levels=c("Shiretoko", "Berchtesgaden", "Grand Teton")))) 
   # Berchtesgaden's and Grand Teton's hulls are calculated using the "concaveman" package
   bgd.hull <- a %>% 
-    mutate(dist.dyn = 10^dist.dyn) %>% 
+    mutate(dist.dyn = 10^dist.dyn) %>% # undo log10-transformation
     filter(landscape == "bgd") %>% 
     dplyr::select(1:2) %>% as.matrix() %>% 
     concaveman(length_threshold=10) %>% 
@@ -329,7 +329,7 @@ for (i in 1:3) {
                 colorscale = colorscale, contours = list(showlines = FALSE)
                 # colors = "PiYG", reversescale=T
   ) %>% 
-    layout(#title = paste0(names(response.colors)[i]), 
+    layout(
       xaxis = list(title = 'Disturbance rate [% yr^-1]',
                    zerolinecolor=toRGB("grey93"),
                    linecolor = "black",
@@ -353,21 +353,18 @@ for (i in 1:3) {
               line = list(width = 2),  # Line width
               color = ~factor(landscape),
               colors="grey30",
-              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
               inherit=F, showlegend=F) %>% 
     add_trace(data=grte.hull, x = ~dist.dyn, y = ~regen.dyn,
               mode = "lines", type = "scatter",
               line = list(width = 2),  # Line width
               color = ~factor(landscape),
               colors="grey30",
-              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
               inherit=F, showlegend=F) %>% 
     add_trace(data=hulls[hulls$landscape=="Shiretoko",], x = ~dist.dyn, y = ~regen.dyn,
               mode = "lines", type = "scatter",
               line = list(width = 2),  # Line width
               color = ~factor(landscape),
               colors="grey30",
-              # colors = c("#ffa214", "#7fff41", "#1d99f9"),
               inherit=F, showlegend=F); p2
   
   if (i == 3) {

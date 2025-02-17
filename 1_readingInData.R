@@ -2,7 +2,7 @@
 # Reading in data ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-## Raw simulation outputs ####
+## 1. Simulation in- and outputs to intermediate data sets ####
 
 landscape_i <- 1; i<-1; id<-1
 for (landscape_i in c(1:3)) {
@@ -182,27 +182,17 @@ for (landscape_i in c(1:3)) {
     #print(i)
   }
   
-  saveRDS(ls, paste0("results/datasets/ls_", landscapename,"_backup.RDATA")); saveRDS(rem, paste0("results/datasets/rem_", landscapename,"_backup.RDATA"))
-  saveRDS(missing, paste0("results/datasets/missing_", landscapename,"_backup.RDATA"))
-  saveRDS(list(ds.basal, ds.dom, ds.forest), paste0("results/datasets/ds.ls_", landscapename,"_backup.RDATA"))
-  saveRDS(patch, paste0("results/datasets/patch_", landscapename,"_backup.RDATA")); saveRDS(regen, paste0("results/datasets/regen_", landscapename,"_backup.RDATA"))
+  saveRDS(ls, paste0("results/datasets/intermediates/ls_", landscapename,"_backup.RDATA")); saveRDS(rem, paste0("results/datasets/intermediates/rem_", landscapename,"_backup.RDATA"))
+  saveRDS(missing, paste0("results/datasets/intermediates/missing_", landscapename,"_backup.RDATA"))
+  saveRDS(list(ds.basal, ds.dom, ds.forest), paste0("results/datasets/intermediates/ds.ls_", landscapename,"_backup.RDATA"))
+  saveRDS(patch, paste0("results/datasets/intermediates/patch_", landscapename,"_backup.RDATA")); saveRDS(regen, paste0("results/datasets/intermediates/regen_", landscapename,"_backup.RDATA"))
   rm(ls, rem, patch, regen, ds.ref, ds.basal, ds.dom, ds.forest, master, dbname, missing)
   gc()
   
 }
 
 
-# note
-## date: 21.09.2024, 19:00
-## server: Lorien (bgd + grte), Anduin (stoko) 
-## saving data to: E:\ 
-## landscape(s) running: on Lorien bgd + grte, on Anduin stoko
-## landscape(s) finished and saved: bgd (22.09, 16:00), stoko (23.09, 07:00)
-## misc: use only own rep as reference for comparison instead of mean over all 5
-## note: i backed up the previous datasets on my private laptop (19.09.2024, 16:00)
-
-
-## Patch sizes ####
+### Patch sizes ####
 ### For Shiretoko and Berchtesgaden
 
 i<-1; rep.i <- 1
@@ -219,7 +209,7 @@ for (i in 1:2) {
     print(rep.i)
   }
   patchlist %>% summary(); nrow(patchlist); nrow(patchlist %>% ungroup() %>% distinct())
-  saveRDS(patchlist %>% distinct(), paste0("results/datasets/patchlist_", landscapes[i], ".RDATA"))
+  saveRDS(patchlist %>% distinct(), paste0("results/datasets/intermediates/patchlist_", landscapes[i], ".RDATA"))
 }
 
 ### For Grand Teton
@@ -240,25 +230,22 @@ for (rep in c(1:5)) {
     level<-bind_rows(level, mgmt.full); rm(mgmt.full)
     print(i)
   }
-  saveRDS(level, paste0("results/datasets/grte_patchlist_rep", rep_i, ".RDATA"))
+  saveRDS(level, paste0("results/datasets/intermediates/grte_patchlist_rep", rep_i, ".RDATA"))
   patchlist <- bind_rows(patchlist, level); rm(level)
 } 
 patchlist %>% summary(); nrow(patchlist); nrow(patchlist %>% distinct())
-saveRDS(patchlist %>% distinct(), "results/datasets/patchlist_grte.RDATA")
+saveRDS(patchlist %>% distinct(), "results/datasets/intermediates/patchlist_grte.RDATA")
 
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Sub-data frames ###########################################################################################################################################
+# 2. Intermediate data sets to final data frames for analysis ###########################################################################################################################################
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 ## Based on ds.ls ####
 
 # empty lists and data.frames
 overtime.ls <- list(c(), c(), c()); names(overtime.ls) <- landscapes
-thresh.df <- data.frame()
-
-# overtime.ls <- readRDS("results/datasets/overTime.ls.RDATA")
 
 landscape_i <- 1
 for (landscape_i in 1:3) {
@@ -298,134 +285,9 @@ for (landscape_i in 1:3) {
   if (landscapename == "stoko") overtime.ls[["stoko"]]<-overtime.ls[["stoko"]][-709,] # fix malformed factor
   if (landscapename == "grte") overtime.ls[["grte"]]<-overtime.ls[["grte"]][c(-7681, -7682),]
   
-  ## thresh.df ####
-  # sensitivity analysis for basal area decline threshold
-  basal <- ds.ls[["basal"]] %>% 
-    filter(year == 80,
-           identifier %in% c(paste0("baseline_rep", 1:5, "_size2_freq2_browsing2_fecundity50"),
-                             paste0("baseline_rep", 1:5, "_size5_freq5_browsing5_fecundity20"),
-                             paste0("baseline_rep", 1:5, "_size10_freq10_browsing10_fecundity10")))
-  prelim <- data.frame()
-  for (thresh in c(-0.8, -0.65, -0.5, -0.35, -0.2)) {
-    prelim <- bind_rows(prelim, basal %>% 
-                          mutate(threshold = ifelse(basal_diff < thresh, "below", "above")) %>%  # count RUs where basal area dropped by more than <thresh> from reference; unidirectional: only if DECREASE
-                          group_by(threshold, climate, rep, size, freq, browsing, fecundity, identifier, landscape) %>%
-                          summarise(prop = mean(sum(n())/n_rid)) %>% # convert from count to proportion
-                          filter(threshold == "below") %>% ungroup() %>% # only keep proportion of changed landscape
-                          group_by(climate, size, freq, browsing, fecundity, landscape) %>% 
-                          summarise(sd = sd(prop),
-                                    prop = mean(prop)) %>% 
-                          mutate(thresh = 100*thresh,
-                                 pick = ifelse(thresh == -50, "yes", "no")))
-  }
-  thresh.df <- bind_rows(thresh.df, prelim); rm(basal, prelim); gc()
-  
-  ## map.df ####
-  
-  # # fix malformed factor in shiretoko
-  # if (landscapename == "stoko") ds.ls[["basal"]][ds.ls[["basal"]]$rid==35001 & ds.ls[["basal"]]$climate=="baseline" & ds.ls[["basal"]]$rep==1 & ds.ls[["basal"]]$size==10 & ds.ls[["basal"]]$freq==5 & ds.ls[["basal"]]$browsing==5 & ds.ls[["basal"]]$year==80 & ds.ls[["basal"]]$threshold=="above",][2,"fecundity"] <- factor("50", levels=c(100,50,20,10))
-  # 
-  # # # endpoint maps with actual basal area, species etc. for a few scenarios (n=8)
-  # # ds.ls[["basal"]] %>% 
-  # #   filter(year == 80,
-  # #          identifier %in% c(paste0("baseline_rep",c(1:5),"_size1_freq1_browsing1_fecundity100"),
-  # #                            paste0("hotdry_rep",c(1:5),"_size1_freq1_browsing1_fecundity100"),
-  # #                            
-  # #                            paste0("baseline_rep",c(1:5),"_size10_freq10_browsing1_fecundity100"),
-  # #                            paste0("hotdry_rep",c(1:5),"_size10_freq10_browsing1_fecundity100"),
-  # #                            
-  # #                            paste0("baseline_rep",c(1:5),"_size1_freq1_browsing10_fecundity10"),
-  # #                            paste0("hotdry_rep",c(1:5),"_size1_freq1_browsing10_fecundity10"),
-  # #                            
-  # #                            paste0("baseline_rep",c(1:5),"_size10_freq10_browsing10_fecundity10"),
-  # #                            paste0("hotdry_rep",c(1:5),"_size10_freq10_browsing10_fecundity10"))) %>% 
-  # #   dplyr::select(-threshold, -n_rid) %>% 
-  # #   full_join(ds.ls[["dom"]] %>% 
-  # #               filter(year == 80,
-  # #                      identifier %in% c(paste0("baseline_rep",c(1:5),"_size1_freq1_browsing1_fecundity100"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size1_freq1_browsing1_fecundity100"),
-  # #                                        
-  # #                                        paste0("baseline_rep",c(1:5),"_size10_freq10_browsing1_fecundity100"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size10_freq10_browsing1_fecundity100"),
-  # #                                        
-  # #                                        paste0("baseline_rep",c(1:5),"_size1_freq1_browsing10_fecundity10"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size1_freq1_browsing10_fecundity10"),
-  # #                                        
-  # #                                        paste0("baseline_rep",c(1:5),"_size10_freq10_browsing10_fecundity10"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size10_freq10_browsing10_fecundity10"))) %>% 
-  # #               dplyr::select(-threshold, -n_rid)) %>% 
-  # #   full_join(ds.ls[["forest"]] %>% 
-  # #               filter(year == 80,
-  # #                      identifier %in% c(paste0("baseline_rep",c(1:5),"_size1_freq1_browsing1_fecundity100"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size1_freq1_browsing1_fecundity100"),
-  # #                                        
-  # #                                        paste0("baseline_rep",c(1:5),"_size10_freq10_browsing1_fecundity100"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size10_freq10_browsing1_fecundity100"),
-  # #                                        
-  # #                                        paste0("baseline_rep",c(1:5),"_size1_freq1_browsing10_fecundity10"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size1_freq1_browsing10_fecundity10"),
-  # #                                        
-  # #                                        paste0("baseline_rep",c(1:5),"_size10_freq10_browsing10_fecundity10"),
-  # #                                        paste0("hotdry_rep",c(1:5),"_size10_freq10_browsing10_fecundity10"))) %>% 
-  # #               dplyr::select(-threshold, -n_rid)) %>% 
-  # #   saveRDS(paste0("results/datasets/map_endpoints_",landscapename,".RDATA"))
-  # 
-  # # maps with % landscape unchanged
-  # a<-ds.ls[["basal"]] %>% 
-  #   # sample_frac(0.001) %>% 
-  #   filter(year==80, rid != 0) %>% 
-  #   dplyr::select(-year) %>% #-basal_c, -basal_ref, -basal_diff, 
-  #   full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
-  #   mutate(threshold = ifelse(threshold == "above", "no", "yes")) %>% 
-  #   rename('1. Structure\nBasal area decreased by >50 % from reference' = threshold) %>% 
-  #   group_by(size, freq, browsing, fecundity, rep, climate, identifier, landscape) %>% 
-  #   filter(!is.na(rep)) %>% 
-  #   mutate(n_rid = n()) %>% ungroup(); gc()
-  # print("finished a")
-  # 
-  # b<-ds.ls[["dom"]] %>% 
-  #   # sample_frac(0.001) %>% 
-  #   filter(year==80, rid != 0) %>% 
-  #   dplyr::select(-year) %>% #-dom_ref, -dom_c, 
-  #   full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
-  #   mutate(threshold = ifelse(threshold == "same", "no", "yes")) %>% 
-  #   rename('2. Composition\nDominant species changed from reference' = threshold) %>% 
-  #   group_by(size, freq, browsing, fecundity, rep, climate, identifier, landscape) %>% 
-  #   filter(!is.na(rep)) %>% 
-  #   mutate(n_rid = n()) %>% ungroup(); gc()
-  # print("finished b")
-  # 
-  # if (landscapename == "stoko") {
-  #   a$n_rid <- 39999; b$n_rid <- 39999
-  # }
-  # interim <- full_join(a, b, by=c("rid", "climate", "rep", "size", "freq", "browsing", "fecundity", "landscape", "x", "y", "n_rid", "identifier")) 
-  # rm(a,b); gc()
-  # 
-  # c<-ds.ls[["forest"]] %>% 
-  #   filter(year==80, rid != 0) %>% 
-  #   dplyr::select(-year) %>% #-count_sum_ref, -count_sum_c, 
-  #   full_join(rid.df[rid.df$landscape==landscapename,]) %>% 
-  #   mutate(threshold = ifelse(threshold == "forest", "no", "yes")) %>% 
-  #   rename('3. Remaining forest\nStem density dropping below 50 trees/ha' = threshold) %>% 
-  #   group_by(size, freq, browsing, fecundity, rep, climate, identifier, landscape) %>% 
-  #   filter(!is.na(rep)) %>% 
-  #   mutate(n_rid = n()) %>% ungroup(); rm(ds.ls); gc()
-  # 
-  # if (landscapename == "stoko") c$n_rid <- 39999
-  # print("finished c")
-  # 
-  # map.df <- interim %>% 
-  #   full_join(c, by=c("rid", "climate", "rep", "size", "freq", "browsing", "fecundity", "landscape", "x", "y", "n_rid", "identifier"))
-  # rm(interim, c); gc()
-  # print("finished map.df, now only saveRDS unfinished")
-  # 
-  # saveRDS(map.df, paste0("results/datasets/map.df_", landscapename, "_extended.RDATA"))
-  # rm(map.df)
-  # 
   print("finished a landscape"); gc()
   
-  
-}; saveRDS(overtime.ls, "results/datasets/overTime.ls.RDATA"); write_csv(thresh.df, "results/datasets/thresh.df.csv"); rm(overtime.ls, thresh.df)
+}; saveRDS(overtime.ls, "results/datasets/overTime.ls.RDATA"); rm(overtime.ls)
 
 
 ## Based on overtime.ls ####
@@ -572,106 +434,4 @@ write_csv(dyn.effect, "results/datasets/dyn.effect.csv")
 rm(dyn.df, dyn.effect)
 
 
-## Based on map.df ####
-landscape_i <- 1
-elev.df <- data.frame()
-for (landscape_i in 1:3) {
-  landscapename <- landscapes[landscape_i]
-  map.df <- readRDS(paste0("results/datasets/map.df_", landscapename, "_extended.RDATA"))
-  df.i <- rid.df %>% 
-    group_by(landscape) %>% 
-    mutate(step = round(dist.treeline,-1)) %>% ungroup() %>% # group rids in elevation steps of 10 m
-    inner_join(map.df[sample(1:nrow(map.df), nrow(map.df)*1), 
-                      c("x", "y", "elevation", "rid", "landscape", "dist.treeline", "rep", "climate", names(response.colors))]) %>% 
-    pivot_longer(cols=names(response.colors)) %>% 
-    mutate(value = ifelse(value == "no", 0, 1)) %>% 
-    group_by(landscape, step, climate, name, rep) %>% # , size, freq, browsing, fecundity
-    summarise(chances = n(), # total number of rids in this elevation step (varies between elevation steps)
-              changed = sum(value), # total number of rids that experienced change per elevation step
-              pct = changed/chances*100) %>% ungroup() # pct of rids that experienced change per elevation step
-  elev.df <- bind_rows(elev.df, df.i); rm(df.i, map.df)
-  if (landscape_i == 3) write_csv(elev.df, "results/datasets/elev.df.csv")
-  print(landscapename); rm(landscapename)
-}; gc()
-
-
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# DISCARDED ####
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-# # fix run 49 in GRTE: baseline_rep1_size1_freq10_browsing1_fecundity100
-# ls <- readRDS(paste0("results/datasets/ls_", "grte","_backup.RDATA")) %>% 
-#   filter(identifier != "baseline_rep1_size1_freq10_browsing1_fecundity100")
-# rem <- readRDS(paste0("results/datasets/rem_", "grte","_backup.RDATA")) %>% 
-#   filter(identifier != "baseline_rep1_size1_freq10_browsing1_fecundity100")
-# ds.ls <- readRDS(paste0("results/datasets/ds.ls_grte_backup.RDATA"))
-# ds.basal <- ds.ls[[1]]%>% 
-#   filter(identifier != "baseline_rep1_size1_freq10_browsing1_fecundity100")
-# ds.dom <- ds.ls[[2]]%>% 
-#   filter(identifier != "baseline_rep1_size1_freq10_browsing1_fecundity100")
-# ds.forest <- ds.ls[[3]]%>% 
-#   filter(identifier != "baseline_rep1_size1_freq10_browsing1_fecundity100")
-# rm(ds.ls); gc()
-
-# # reference always mean over all 5 reps of "baseline_rep1_size1_freq1_browsing1_fecundity100" (also for hot-dry runs)
-# # prop of basal area decreased by more than 50 %
-# ds.basal.i <- ds.i %>%
-#   group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#   summarise(basal_c = sum(basal_area_m2)) %>% ungroup() %>% # basal area sum per RU in 2020, 2050, 2100
-#   inner_join(ds.ref %>%
-#                group_by(rid, climate, size, freq, browsing, fecundity, landscape, year) %>%
-#                summarise(basal_ref = sum(basal_area_m2)/5) %>% ungroup() %>% # basal area sum in 2020, 2050, 2100 under reference conditions
-#                dplyr::select(rid, basal_ref, year), by = join_by(rid, year),
-#              multiple = "all") %>%
-#   filter(!is.na(basal_ref)) %>% # filter out RUs for which no reference conditions exist
-#   group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#   mutate(basal_diff = (basal_c-basal_ref)/basal_ref, # relative change in basal area sum
-#          threshold = ifelse(basal_diff < -0.5, "below", "above"), # count RUs where basal area dropped by more than 50% from reference; unidirectional: only if DECREASE > 50%
-#          n_rid = length(unique(rid))) %>% ungroup()
-# 
-# # prop of dominant species changed
-# ds.dom.i <- ds.i %>%
-#   group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#   mutate(rel_count=count_ha/sum(count_ha), rel_basal=basal_area_m2/sum(basal_area_m2),
-#          iv = rel_count+rel_basal) %>%
-#   filter(iv == max(iv)) %>% ungroup() %>% # species with max IV in 2020, 2050, 2100
-#   rename(dom_c = species) %>%
-#   dplyr::select(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, dom_c, year) %>%
-#   inner_join(ds.ref %>%
-#                group_by(rid, rep, climate, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#                mutate(rel_count=count_ha/sum(count_ha), rel_basal=basal_area_m2/sum(basal_area_m2),
-#                       iv = rel_count+rel_basal) %>%
-#                filter(iv == max(iv)) %>% # species with max IV in 2020, 2050, 2100 under reference conditions
-#                ungroup() %>% rename(dom_ref = species) %>%
-#                dplyr::select(rid, dom_ref, year) %>%
-#                # chose most common dominant species by majority vote
-#                group_by(rid, year, dom_ref) %>%
-#                mutate(n_species = n()) %>% ungroup() %>%
-#                group_by(rid, year) %>%
-#                filter(n_species == max(n_species)) %>%
-#                dplyr::select(-n_species) %>% distinct() %>%
-#                # if rids have multiple equally popular dominant species: sample one randomly
-#                mutate(n_rows=n(),
-#                       dom_ref = ifelse(n_rows > 1, sample(unique(dom_ref), 1), dom_ref)) %>% ungroup() %>%
-#                dplyr::select(-n_rows) %>% distinct(), by = join_by(rid, year),
-#              multiple = "all") %>% #summary()
-#   filter(!is.na(dom_ref)) %>% # filter out RUs for which no reference conditions exist
-#   group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#   mutate(threshold = ifelse(dom_c == dom_ref, "same", "different"), # count RUs where dominant species changed
-#          n_rid = length(unique(rid))) %>% ungroup()
-# 
-# # prop of trees count > 50
-# ds.forest.i <- ds.i %>%
-#   group_by(rid, climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#   summarise(count_sum_c = sum(count_ha)) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100
-#   inner_join(ds.ref %>%
-#                group_by(rid, climate, size, freq, browsing, fecundity, landscape, year) %>%
-#                summarise(count_sum_ref = sum(count_ha)/5) %>% ungroup() %>% # tree count sum in 2020, 2050, 2100 under reference conditions
-#                dplyr::select(rid, count_sum_ref, year), by = join_by(rid, year),
-#              multiple = "all") %>%
-#   filter(!is.na(count_sum_ref)) %>% # filter out RUs for which no reference conditions exist
-#   group_by(climate, rep, size, freq, browsing, fecundity, identifier, landscape, year) %>%
-#   mutate(threshold = as.factor(ifelse(count_sum_c < 50 & count_sum_ref >= 50, "non-forest", "forest")), # count RUs where tree count dropped below 50 (and reference value is also higher than 50)
-#          n_rid = length(unique(rid))) %>% ungroup()
 
