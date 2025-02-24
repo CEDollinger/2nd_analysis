@@ -32,5 +32,6 @@ names(response.colors) <- c("1. Structure\nBasal area decreased by >50 % from re
 colors.landscape <- c("#009988", "#999933", "#882255")
 names(colors.landscape) <- c("Berchtesgaden", "Grand Teton", "Shiretoko")
 
-# data frame with all Resource Units (100x100 m cells) and their elevation, as well as xy-coordinates
+# data frame with all Resource Units IDs (100x100 m cells) and their elevation, as well as xy-coordinates
+# Generated from simulation input files
 rid.df <- read_csv("processed_data/helper_files/rid.df.csv")

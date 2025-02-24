@@ -225,7 +225,7 @@ for (i in 1:3) {
   p1 <- plot_ly(mtrx.melt,
     x = ~dist.dyn, y = ~regen.dyn, z = ~Change,
     type = "contour", contours = list(showlines = FALSE),
-    colors = "Spectral", reversescale = T, zmin = 0, zmax = 100,
+    colors = "Spectral", reversescale = T, zmin = 0, zmax = 100, # colorblind safe option with palette "PuOr" can be found in the Supplement
     ncontours = 21, opacity = 1
   ) %>%
     layout(
@@ -274,25 +274,19 @@ for (i in 1:3) {
     add_trace(
       data = bgd.hull, x = ~dist.dyn, y = ~regen.dyn,
       mode = "lines", type = "scatter",
-      line = list(width = 2), # Line width
-      color = ~ factor(landscape),
-      colors = "grey30",
+      line = list(width = 2, color = toRGB("grey30")), # Line width
       inherit = F, showlegend = F
     ) %>%
     add_trace(
       data = grte.hull, x = ~dist.dyn, y = ~regen.dyn,
       mode = "lines", type = "scatter",
-      line = list(width = 2), # Line width
-      color = ~ factor(landscape),
-      colors = "grey30",
+      line = list(width = 2, color = toRGB("grey30")), # Line width
       inherit = F, showlegend = F
     ) %>%
     add_trace(
       data = hulls[hulls$landscape == "Shiretoko", ], x = ~dist.dyn, y = ~regen.dyn,
       mode = "lines", type = "scatter",
-      line = list(width = 2), # Line width
-      color = ~ factor(landscape),
-      colors = "grey30",
+      line = list(width = 2, color = toRGB("grey30")), # Line width
       inherit = F, showlegend = F
     )
   p2
@@ -319,18 +313,20 @@ for (i in 1:3) {
   p3b
   if (i == 3) {
     save_image(p3b,
-      file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1,
+      file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
       width = 1900, height = 1700
     )
   } else {
     save_image(p3a,
-      file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1,
+      file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
       width = 1900, height = 1700
     )
   }
   rm(p1, p2, p3a, p3b, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, bgd.hull, grte.hull, centroids, hulls_geom, hulls_sf, centroid_coords)
 }
 rm(dyn.df, create_hull)
+
+# note: final figure preparation, i.e., graying out the plot surface beyond the data space, was done manually in GIMP (version 2.10.38)
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # Q3: is there an interaction with climate? ###########################################################################################################################################
@@ -421,28 +417,28 @@ colorscale <- as.list(1:colorlength)
 if (border < colorlength / 2) {
   ## colorscale below zero
   border_neg <- colorlength - border
-  s <- scales::seq_gradient_pal("#4d9221", "#FFFFFF", "Lab")(seq(0, 1, length.out = border_neg))
+  s <- scales::seq_gradient_pal("#1b9e77", "#d8b365", "Lab")(seq(0, 1, length.out = border_neg)) #"#4d9221", "#FFFFFF"
   for (j in 1:border) {
     colorscale[[j]] <- c((j - 1) / colorlength, s[j + border_neg - border - 1])
   }
 
   ## colorscale above zero
   border_pos <- border
-  s <- scales::seq_gradient_pal("#FFFFFF", "#c51b7d", "Lab")(seq(0, 1, length.out = colorlength - border_pos))
+  s <- scales::seq_gradient_pal("#d8b365", "#7570b3", "Lab")(seq(0, 1, length.out = colorlength - border_pos)) #"#FFFFFF", "#c51b7d"
   for (j in 1:(colorlength - border_pos)) {
     colorscale[[j + border_pos]] <- c((j + border) / colorlength, s[j])
   }
 } else {
   ## colorscale below zero
   border_neg <- border
-  s <- scales::seq_gradient_pal("#4d9221", "#FFFFFF", "Lab")(seq(0, 1, length.out = border_neg))
+  s <- scales::seq_gradient_pal("#1b9e77", "#d8b365", "Lab")(seq(0, 1, length.out = border_neg))
   for (j in 1:border_neg) {
     colorscale[[j]] <- c((j - 1) / colorlength, s[j])
   }
 
   ## colorscale above zero
   border_pos <- colorlength - border
-  s <- scales::seq_gradient_pal("#FFFFFF", "#c51b7d", "Lab")(seq(0, 1, length.out = border))
+  s <- scales::seq_gradient_pal("#d8b365", "#7570b3", "Lab")(seq(0, 1, length.out = border))
   for (j in 1:border_pos) {
     colorscale[[j + border]] <- c((j + border) / colorlength, s[j])
   }
@@ -487,37 +483,31 @@ for (i in 1:3) {
     add_trace(
       data = bgd.hull, x = ~dist.dyn, y = ~regen.dyn,
       mode = "lines", type = "scatter",
-      line = list(width = 2), # Line width
-      color = ~ factor(landscape),
-      colors = "grey30",
+      line = list(width = 2, color = toRGB("grey30")), # Line width
       inherit = F, showlegend = F
     ) %>%
     add_trace(
       data = grte.hull, x = ~dist.dyn, y = ~regen.dyn,
       mode = "lines", type = "scatter",
-      line = list(width = 2), # Line width
-      color = ~ factor(landscape),
-      colors = "grey30",
+      line = list(width = 2, color = toRGB("grey30")), # Line width
       inherit = F, showlegend = F
     ) %>%
     add_trace(
       data = hulls[hulls$landscape == "Shiretoko", ], x = ~dist.dyn, y = ~regen.dyn,
       mode = "lines", type = "scatter",
-      line = list(width = 2), # Line width
-      color = ~ factor(landscape),
-      colors = "grey30",
+      line = list(width = 2, color = toRGB("grey30")), # Line width
       inherit = F, showlegend = F
     )
   p2
 
   if (i == 3) {
     save_image(p2,
-      file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale = 1,
+      file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_climateEffect_cb_print_friendly.png"), scale = 1,
       width = 1900, height = 1700
     )
   } else {
     save_image(p2,
-      file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect.png"), scale = 1,
+      file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect_cb_print_friendly.png"), scale = 1,
       width = 1900, height = 1700
     )
   }
@@ -528,3 +518,5 @@ rm(
 )
 
 rm(dyn.effect, create_hull)
+
+# note: final figure preparation, i.e., graying out the plot surface beyond the data space, was done manually in GIMP (version 2.10.38)
