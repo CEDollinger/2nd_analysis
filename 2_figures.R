@@ -4,7 +4,7 @@
 
 singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>%
   mutate(landscape = factor(landscape,
-    levels = c("Shiretoko", "Berchtesgaden", "Grand Teton")
+                            levels = c("Shiretoko", "Berchtesgaden", "Grand Teton")
   )) %>%
   mutate(
     name = case_match(
@@ -14,7 +14,7 @@ singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>%
       names(response.colors)[3] ~ "Forest loss"
     ),
     name = factor(name,
-      levels = c("Structure", "Composition", "Forest loss")
+                  levels = c("Structure", "Composition", "Forest loss")
     )
   ) %>%
   mutate(
@@ -26,10 +26,10 @@ singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>%
       "Disturbance size" ~ "Disturbance size"
     ),
     process = factor(process,
-      levels = c(
-        "Disturbance frequency", "Disturbance size",
-        "Seed production", "Sapling growth"
-      )
+                     levels = c(
+                       "Disturbance frequency", "Disturbance size",
+                       "Seed production", "Sapling growth"
+                     )
     )
   )
 
@@ -38,33 +38,30 @@ singleProcess.mean <- singleProcess.df %>%
   summarise(value = mean(value)) %>%
   ungroup() %>%
   mutate(type = ifelse(process %in% c("Disturbance size", "Disturbance frequency"),
-    "Disturbance", "Regeneration"
+                       "Disturbance", "Regeneration"
   ))
 
 png("results/figures/Q1_singleProcesses.png",
-  res = 200,
-  height = 1600, width = 2200
+    res = 260,
+    height = 1600, width = 2200
 )
 singleProcess.df %>%
   filter(name != "Forest loss") %>%
   ggplot(aes(x = as.numeric(mod), y = value, col = process)) +
-  geom_line(aes(group = paste(rep, process)),
-    linewidth = 0.2, alpha = 0.6
-  ) +
   geom_line(
     data = singleProcess.mean %>%
       filter(name != "Forest loss"),
-    linewidth = 0.5, alpha = 1
+    linewidth = 0.5, alpha = 1, linetype = 2
   ) +
   geom_point(
     data = singleProcess.mean %>%
       filter(name != "Forest loss"),
-    size = 3, show.legend = T
+    size = 3, alpha = 0.8, show.legend = T
   ) +
   facet_grid(landscape ~ name,
-    scales = "free_y", switch = "y"
+             scales = "free_y", switch = "y"
   ) +
-  labs(y = "Forest change [%]", x = "Level", col = "Process", shape = "Process") +
+  labs(y = "Forest change [%]", x = "Level", col = "Process") +
   scale_x_continuous(labels = c("Ref.", "2", "5", "10"), breaks = c(1, 2, 5, 10)) +
   scale_color_manual(values = c(
     "Disturbance size" = "#b35806",
@@ -88,29 +85,26 @@ dev.off()
 
 # forest loss, for the suppl.
 png("results/figures/suppl_figures/Q1_singleProcesses_forestloss.png",
-  res = 220,
-  height = 1200, width = 1800
+    res = 220,
+    height = 1200, width = 1800
 )
 singleProcess.df %>%
   filter(name == "Forest loss") %>%
   ggplot(aes(x = as.numeric(mod), y = value, col = process)) +
-  geom_line(aes(group = paste(rep, process)),
-    linewidth = 0.2, alpha = 0.6
-  ) +
   geom_line(
     data = singleProcess.mean %>%
       filter(name == "Forest loss"),
-    linewidth = 0.5, alpha = 1
+    linewidth = 0.5, alpha = 1, linetype = 2
   ) +
   geom_point(
     data = singleProcess.mean %>%
       filter(name == "Forest loss"),
-    size = 3, show.legend = T
+    size = 3, alpha = 0.8, show.legend = T
   ) +
   facet_grid(landscape ~ name,
-    scales = "free_y", switch = "y"
+             scales = "free_y", switch = "y"
   ) +
-  labs(y = "Forest change [%]", x = "Level", col = "Process", shape = "Process") +
+  labs(y = "Forest change [%]", x = "Level", col = "Process") +
   scale_x_continuous(labels = c("Ref.", "2", "5", "10"), breaks = c(1, 2, 5, 10)) +
   scale_color_manual(values = c(
     "Disturbance size" = "#b35806",
@@ -167,26 +161,26 @@ for (i in 1:3) {
       dist.dyn = log10(dist.dyn)
     )
   print(summary(a))
-
+  
   (hulls <- a %>%
-    group_by(landscape) %>%
-    do(create_hull(.)) %>%
-    rename(Change = value) %>%
-    mutate(
-      landscape = case_match(
-        landscape,
-        "bgd" ~ "Berchtesgaden", "stoko" ~ "Shiretoko", "grte" ~ "Grand Teton"
-      ),
-      landscape = factor(landscape,
-        levels = c("Shiretoko", "Berchtesgaden", "Grand Teton")
-      )
-    ))
+      group_by(landscape) %>%
+      do(create_hull(.)) %>%
+      rename(Change = value) %>%
+      mutate(
+        landscape = case_match(
+          landscape,
+          "bgd" ~ "Berchtesgaden", "stoko" ~ "Shiretoko", "grte" ~ "Grand Teton"
+        ),
+        landscape = factor(landscape,
+                           levels = c("Shiretoko", "Berchtesgaden", "Grand Teton")
+        )
+      ))
   # Convert your hulls to an sf object for geometric operations
   hulls_sf <- st_as_sf(hulls, coords = c("dist.dyn", "regen.dyn"), crs = 4326)
   # Calculate the convex hull for each landscape if not already done
   hulls_geom <- hulls_sf %>%
     mutate(abbrev = ifelse(landscape == "Shiretoko", "STK",
-      ifelse(landscape == "Berchtesgaden", "BGD", "GTE")
+                           ifelse(landscape == "Berchtesgaden", "BGD", "GTE")
     )) %>%
     group_by(landscape, abbrev) %>%
     summarize(geometry = st_combine(geometry)) %>%
@@ -198,7 +192,7 @@ for (i in 1:3) {
   # Add these centroids to the hulls_geom object for later plotting
   hulls_geom$centroid_x <- centroid_coords[, 1]
   hulls_geom$centroid_y <- centroid_coords[, 2]
-
+  
   #### fit loess model and predict
   data.loess <- loess(value ~ dist.dyn * regen.dyn, data = a)
   # Create a sequence of incrementally increasing (by 0.3 units) values for both wt and hp
@@ -217,16 +211,16 @@ for (i in 1:3) {
   mtrx.melt$regen.dyn <- as.numeric(str_sub(mtrx.melt$regen.dyn, str_locate(mtrx.melt$regen.dyn, "=")[1, 1] + 1))
   mtrx.melt <- mtrx.melt %>%
     mutate(value = ifelse(value > 100, 100,
-      ifelse(value < 0, 0, value)
+                          ifelse(value < 0, 0, value)
     )) %>%
     rename(Change = value)
   head(mtrx.melt)
-
+  
   p1 <- plot_ly(mtrx.melt,
-    x = ~dist.dyn, y = ~regen.dyn, z = ~Change,
-    type = "contour", contours = list(showlines = FALSE),
-    colors = "Spectral", reversescale = T, zmin = 0, zmax = 100, # colorblind safe option with palette "PuOr" can be found in the Supplement
-    ncontours = 21, opacity = 1
+                x = ~dist.dyn, y = ~regen.dyn, z = ~Change,
+                type = "contour", contours = list(showlines = FALSE),
+                colors = "Spectral", reversescale = T, zmin = 0, zmax = 100, # colorblind safe option with palette "PuOr" can be found in the Supplement
+                ncontours = 21, opacity = 1
   ) %>%
     layout(
       xaxis = list(
@@ -248,7 +242,7 @@ for (i in 1:3) {
       titlefont = list(size = 50), tickfont = list(size = 50)
     )
   p1
-
+  
   # Berchtesgaden's and Grand Teton's hulls are calculated using the "concaveman" package
   bgd.hull <- a %>%
     mutate(dist.dyn = 10^dist.dyn) %>% # undo log10-transformation
@@ -268,7 +262,7 @@ for (i in 1:3) {
     as.data.frame() %>%
     rename(dist.dyn = V1, regen.dyn = V2) %>%
     mutate(dist.dyn = log10(dist.dyn))
-
+  
   # p2: add hulls for each landscape
   p2 <- p1 %>%
     add_trace(
@@ -290,17 +284,21 @@ for (i in 1:3) {
       inherit = F, showlegend = F
     )
   p2
-
-  # p3a: add position of reference disturbance and regeneration rate
-  p3a <- p2 %>%
+  
+  # p3a: add position of reference disturbance and regeneration rate AND data points
+  p3a <- p2  %>%
+    add_trace(data = a, x = ~dist.dyn, y = ~regen.dyn,
+              mode = "markers", type = "scatter",
+              showlegend=F, inherit=F,
+              marker = list(size = 4, color=toRGB("grey80"))) %>%
     add_trace(
       data = baseline.drivers, x = ~dist, y = ~regen, # reference driver rates by landscape
       mode = "markers", type = "scatter", name = "Reference",
       marker = list(size = 45, color = "black", symbol = "circle")
-    ) %>%
+    ) %>% 
     layout(legend = list(font = list(size = 50)))
   p3a
-
+  
   # p3b: don't add reference rate, but add label to each hull (landscape abbreviation)
   # results for forest loss, figure for the supplement
   p3b <- p2 %>%
@@ -311,18 +309,34 @@ for (i in 1:3) {
       textfont = list(size = 100, bold = TRUE, color = toRGB("grey10"))
     )
   p3b
+  
+  # p3c: add reference rates, but no data points
+  p3c <- p2  %>%
+    add_trace(
+      data = baseline.drivers, x = ~dist, y = ~regen, # reference driver rates by landscape
+      mode = "markers", type = "scatter", name = "Reference",
+      marker = list(size = 45, color = "black", symbol = "circle")
+    ) %>% 
+    layout(legend = list(font = list(size = 50)))
+  p3c
+  
   if (i == 3) {
     save_image(p3b,
-      file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
-      width = 1900, height = 1700
+               file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
+               width = 1900, height = 1700
+    )
+  } else if (i==1) {
+    save_image(p3a,
+               file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
+               width = 2050, height = 1700
     )
   } else {
-    save_image(p3a,
-      file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
-      width = 1900, height = 1700
+    save_image(p3c,
+               file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
+               width = 1900, height = 1700
     )
   }
-  rm(p1, p2, p3a, p3b, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, bgd.hull, grte.hull, centroids, hulls_geom, hulls_sf, centroid_coords)
+  rm(p1, p2, p3a, p3b, p3c, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, bgd.hull, grte.hull, centroids, hulls_geom, hulls_sf, centroid_coords)
 }
 rm(dyn.df, create_hull)
 
@@ -352,20 +366,20 @@ for (i in 1:3) {
       regen.dyn = 2
     ) %>%
     mutate(dist.dyn = log10(dist.dyn))
-
+  
   (hulls <- a %>%
-    group_by(landscape) %>%
-    do(create_hull(.)) %>%
-    mutate(
-      landscape = case_match(
-        landscape,
-        "bgd" ~ "Berchtesgaden", "stoko" ~ "Shiretoko", "grte" ~ "Grand Teton"
-      ),
-      landscape = factor(landscape,
-        levels = c("Shiretoko", "Berchtesgaden", "Grand Teton")
-      )
-    ))
-
+      group_by(landscape) %>%
+      do(create_hull(.)) %>%
+      mutate(
+        landscape = case_match(
+          landscape,
+          "bgd" ~ "Berchtesgaden", "stoko" ~ "Shiretoko", "grte" ~ "Grand Teton"
+        ),
+        landscape = factor(landscape,
+                           levels = c("Shiretoko", "Berchtesgaden", "Grand Teton")
+        )
+      ))
+  
   # Berchtesgaden's and Grand Teton's hulls are calculated using the "concaveman" package
   bgd.hull <- a %>%
     mutate(dist.dyn = 10^dist.dyn) %>% # undo log10-transformation
@@ -385,7 +399,7 @@ for (i in 1:3) {
     as.data.frame() %>%
     rename(dist.dyn = V1, regen.dyn = V2) %>%
     mutate(dist.dyn = log10(dist.dyn))
-
+  
   data.loess <- loess(effect ~ dist.dyn * regen.dyn, data = a)
   summary(data.loess)
   # Create a sequence of incrementally increasing (by 0.3 units) values for disturbance and regeneration rate
@@ -421,7 +435,7 @@ if (border < colorlength / 2) {
   for (j in 1:border) {
     colorscale[[j]] <- c((j - 1) / colorlength, s[j + border_neg - border - 1])
   }
-
+  
   ## colorscale above zero
   border_pos <- border
   s <- scales::seq_gradient_pal("#d8b365", "#7570b3", "Lab")(seq(0, 1, length.out = colorlength - border_pos)) #"#FFFFFF", "#c51b7d"
@@ -435,7 +449,7 @@ if (border < colorlength / 2) {
   for (j in 1:border_neg) {
     colorscale[[j]] <- c((j - 1) / colorlength, s[j])
   }
-
+  
   ## colorscale above zero
   border_pos <- colorlength - border
   s <- scales::seq_gradient_pal("#d8b365", "#7570b3", "Lab")(seq(0, 1, length.out = border))
@@ -448,8 +462,8 @@ rm(j)
 
 for (i in 1:3) {
   p1 <- plot_ly(mtrx.ls[[i]],
-    x = ~dist.dyn, y = ~regen.dyn, z = ~effect, type = "contour",
-    colorscale = colorscale, contours = list(showlines = FALSE)
+                x = ~dist.dyn, y = ~regen.dyn, z = ~effect, type = "contour",
+                colorscale = colorscale, contours = list(showlines = FALSE)
   ) %>%
     layout(
       xaxis = list(
@@ -477,7 +491,7 @@ for (i in 1:3) {
       titlefont = list(size = 50), tickfont = list(size = 50)
     )
   p1
-
+  
   # p2: add hull for each landscape
   p2 <- p1 %>%
     add_trace(
@@ -499,16 +513,16 @@ for (i in 1:3) {
       inherit = F, showlegend = F
     )
   p2
-
+  
   if (i == 3) {
     save_image(p2,
-      file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_climateEffect_cb_print_friendly.png"), scale = 1,
-      width = 1900, height = 1700
+               file = paste0("results/figures/suppl_figures/Q3_contourPlot_loess_", i, "_climateEffect_cb_print_friendly.png"), scale = 1,
+               width = 1900, height = 1700
     )
   } else {
     save_image(p2,
-      file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect_cb_print_friendly.png"), scale = 1,
-      width = 1900, height = 1700
+               file = paste0("results/figures/Q3_contourPlot_loess_", i, "_climateEffect_cb_print_friendly.png"), scale = 1,
+               width = 1900, height = 1700
     )
   }
 }
