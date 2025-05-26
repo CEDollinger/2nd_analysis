@@ -285,12 +285,8 @@ for (i in 1:3) {
     )
   p2
   
-  # p3a: add position of reference disturbance and regeneration rate AND data points
+  # p3a: add reference rates
   p3a <- p2  %>%
-    add_trace(data = a, x = ~dist.dyn, y = ~regen.dyn,
-              mode = "markers", type = "scatter",
-              showlegend=F, inherit=F,
-              marker = list(size = 4, color=toRGB("grey80"))) %>%
     add_trace(
       data = baseline.drivers, x = ~dist, y = ~regen, # reference driver rates by landscape
       mode = "markers", type = "scatter", name = "Reference",
@@ -298,6 +294,7 @@ for (i in 1:3) {
     ) %>% 
     layout(legend = list(font = list(size = 50)))
   p3a
+  
   
   # p3b: don't add reference rate, but add label to each hull (landscape abbreviation)
   # results for forest loss, figure for the supplement
@@ -310,33 +307,19 @@ for (i in 1:3) {
     )
   p3b
   
-  # p3c: add reference rates, but no data points
-  p3c <- p2  %>%
-    add_trace(
-      data = baseline.drivers, x = ~dist, y = ~regen, # reference driver rates by landscape
-      mode = "markers", type = "scatter", name = "Reference",
-      marker = list(size = 45, color = "black", symbol = "circle")
-    ) %>% 
-    layout(legend = list(font = list(size = 50)))
-  p3c
   
   if (i == 3) {
     save_image(p3b,
                file = paste0("results/figures/suppl_figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
                width = 1900, height = 1700
     )
-  } else if (i==1) {
-    save_image(p3a,
-               file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
-               width = 2050, height = 1700
-    )
   } else {
-    save_image(p3c,
+    save_image(p3a,
                file = paste0("results/figures/Q2_contourPlot_loess_", i, "_baseline.png"), scale = 1, #_cb_print_friendly
                width = 1900, height = 1700
     )
   }
-  rm(p1, p2, p3a, p3b, p3c, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, bgd.hull, grte.hull, centroids, hulls_geom, hulls_sf, centroid_coords)
+  rm(p1, p2, p3a, p3b, data.loess, a, mtrx.melt, xgrid, ygrid, data.fit, mtrx3d, hulls, bgd.hull, grte.hull, centroids, hulls_geom, hulls_sf, centroid_coords)
 }
 rm(dyn.df, create_hull)
 
