@@ -27,10 +27,7 @@ library(scales)
 landscapes <- c("bgd", "grte", "stoko")
 vars <- c("size", "freq", "fecundity", "browsing")
 areas <- data.frame(area = c(8645, 42586, 35676), landscape = landscapes) # forested landscape area in ha; "bgd", "grte", "stoko"
-response.colors <- c("#1b9e77", "#7570b3", "#d95f02")
-names(response.colors) <- c("1. Structure\nBasal area decreased by >50 % from reference", "2. Composition\nDominant species changed from reference", "3. Remaining forest\nStem density dropping below 50 trees/ha")
-colors.landscape <- c("#009988", "#999933", "#882255")
-names(colors.landscape) <- c("Berchtesgaden", "Grand Teton", "Shiretoko")
+responses <- c("1. Structure\nBasal area decreased by >50 % from reference", "2. Composition\nDominant species changed from reference", "3. Remaining forest\nStem density dropping below 50 trees/ha")
 
 # data frame with all Resource Units IDs (100x100 m cells) and their elevation, as well as xy-coordinates
 # Generated from simulation input files

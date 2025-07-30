@@ -9,9 +9,9 @@ singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>%
   mutate(
     name = case_match(
       name,
-      names(response.colors)[1] ~ "Structure",
-      names(response.colors)[2] ~ "Composition",
-      names(response.colors)[3] ~ "Forest loss"
+      responses[1] ~ "Structure",
+      responses[2] ~ "Composition",
+      responses[3] ~ "Forest loss"
     ),
     name = factor(name,
                   levels = c("Structure", "Composition", "Forest loss")
@@ -146,10 +146,10 @@ create_hull <- function(data) {
 }
 
 i <- 1
-for (i in 1:3) {
+for (i in 1:length(responses)) {
   a <- dyn.df %>%
     filter(
-      name == names(response.colors)[i],
+      name == responses[i],
       climate == "baseline"
     ) %>%
     dplyr::select(dist.dyn, regen.dyn, value, landscape) %>%
@@ -337,9 +337,9 @@ create_hull <- function(data) {
 
 mtrx.ls <- list(NA, NA, NA)
 i <- 1
-for (i in 1:3) {
+for (i in 1:length(responses)) {
   a <- dyn.effect %>%
-    filter(name == names(response.colors)[i]) %>%
+    filter(name == responses[i]) %>%
     dplyr::select(dist.dyn_baseline, regen.dyn_baseline, effect, landscape) %>%
     rename(
       dist.dyn = 1,
@@ -440,7 +440,7 @@ if (border < colorlength / 2) {
 rm(j)
 
 
-for (i in 1:3) {
+for (i in 1:length(responses)) {
   p1 <- plot_ly(mtrx.ls[[i]],
                 x = ~dist.dyn, y = ~regen.dyn, z = ~effect, type = "contour",
                 colorscale = colorscale, contours = list(showlines = FALSE)

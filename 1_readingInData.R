@@ -397,7 +397,7 @@ overtime.ls <- readRDS("results/datasets/overtime.ls.RDATA")
 singleProcess.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]], overtime.ls[["stoko"]]) %>%
   filter(year == 80, climate == "baseline") %>%
   filter(freq == 1, fecundity == 100, browsing == 1) %>%
-  pivot_longer(cols = names(response.colors)) %>%
+  pivot_longer(cols = responses) %>%
   group_by(landscape, size, name, rep) %>%
   summarise(value = mean(value)) %>%
   ungroup() %>%
@@ -405,14 +405,14 @@ singleProcess.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]], overt
   full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]], overtime.ls[["stoko"]]) %>%
     filter(year == 80, climate == "baseline") %>%
     filter(size == 1, fecundity == 100, browsing == 1) %>%
-    pivot_longer(cols = names(response.colors)) %>%
+    pivot_longer(cols = responses) %>%
     group_by(landscape, freq, name, rep) %>%
     summarise(value = mean(value)) %>% ungroup() %>%
     rename(mod = freq, "Disturbance frequency" = value)) %>%
   full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]], overtime.ls[["stoko"]]) %>%
     filter(year == 80, climate == "baseline") %>%
     filter(size == 1, freq == 1, browsing == 1) %>%
-    pivot_longer(cols = names(response.colors)) %>%
+    pivot_longer(cols = responses) %>%
     group_by(landscape, fecundity, name, rep) %>%
     summarise(value = mean(value)) %>% ungroup() %>%
     rename(mod = fecundity, "Seed production decrease" = value) %>%
@@ -420,7 +420,7 @@ singleProcess.df <- bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]], overt
   full_join(bind_rows(overtime.ls[["bgd"]], overtime.ls[["grte"]], overtime.ls[["stoko"]]) %>%
     filter(year == 80, climate == "baseline") %>%
     filter(size == 1, freq == 1, fecundity == 100) %>%
-    pivot_longer(cols = names(response.colors)) %>%
+    pivot_longer(cols = responses) %>%
     group_by(landscape, browsing, name, rep) %>%
     summarise(value = mean(value)) %>% ungroup() %>%
     rename(mod = browsing, "Sapling growth limitations" = value)) %>%
