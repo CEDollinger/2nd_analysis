@@ -35,7 +35,8 @@ singleProcess.df <- read_csv("results/datasets/singleProcess.df.csv") %>%
 
 singleProcess.mean <- singleProcess.df %>%
   group_by(landscape, mod, name, process) %>% # average over all 5 replicates
-  summarise(value = mean(value)) %>%
+  summarise(sd = sd(value),
+    value = mean(value)) %>%
   ungroup() %>%
   mutate(type = ifelse(process %in% c("Disturbance size", "Disturbance frequency"),
                        "Disturbance", "Regeneration"
@@ -45,29 +46,22 @@ png("results/figures/Q1_singleProcesses.png",
     res = 260,
     height = 1600, width = 2200
 )
-singleProcess.df %>%
+singleProcess.mean %>%
   filter(name != "Forest loss") %>%
-  ggplot(aes(x = as.numeric(mod), y = value, col = process)) +
-  geom_line(
-    data = singleProcess.mean %>%
-      filter(name != "Forest loss"),
-    linewidth = 0.5, alpha = 1, linetype = 2
-  ) +
-  geom_point(
-    data = singleProcess.mean %>%
-      filter(name != "Forest loss"),
-    size = 3, alpha = 0.8, show.legend = T
-  ) +
+  ggplot(aes(x = mod %>% as.factor() %>% as.numeric(), y = value, fill = process)) +
+  geom_bar(stat="identity", position=position_dodge2(), col="black") +
+  geom_errorbar(aes(ymin=value-sd, ymax=value+sd), position=position_dodge2(), linewidth=0.5) +
   facet_grid(landscape ~ name,
-             scales = "free_y", switch = "y"
+             scales = "free_y"
   ) +
-  labs(y = "Forest change [%]", x = "Level", col = "Process") +
-  scale_x_continuous(labels = c("Ref.", "2", "5", "10"), breaks = c(1, 2, 5, 10)) +
-  scale_color_manual(values = c(
-    "Disturbance size" = "#b35806",
-    "Disturbance frequency" = "#f46d43",
-    "Seed production" = "#542788",
-    "Sapling growth" = "#2166ac"
+  #coord_flip() +
+  labs(y = "Forest change [%]", x = "Level", fill = "Process") +
+  scale_x_continuous(labels = c("Ref.", "2", "5", "10"), breaks = 1:4) +
+  scale_fill_manual(values = c(
+    "Disturbance size" = "#fe9929",
+    "Disturbance frequency" = "#fec44f",
+    "Seed production" = "#7bccc4",
+    "Sapling growth" = "#4eb3d3"
   )) +
   theme_bw() +
   theme(
@@ -85,35 +79,38 @@ dev.off()
 
 # forest loss, for the suppl.
 png("results/figures/suppl_figures/Q1_singleProcesses_forestloss.png",
-    res = 220,
-    height = 1200, width = 1800
+    res = 160,
+    height = 1000, width = 1600
 )
-singleProcess.df %>%
+singleProcess.mean %>%
   filter(name == "Forest loss") %>%
-  ggplot(aes(x = as.numeric(mod), y = value, col = process)) +
-  geom_line(
-    data = singleProcess.mean %>%
-      filter(name == "Forest loss"),
-    linewidth = 0.5, alpha = 1, linetype = 2
-  ) +
-  geom_point(
-    data = singleProcess.mean %>%
-      filter(name == "Forest loss"),
-    size = 3, alpha = 0.8, show.legend = T
-  ) +
+  ggplot(aes(x = mod %>% as.factor() %>% as.numeric(), y = value, fill = process)) +
+  geom_bar(stat="identity", position=position_dodge2(), col="black") +
+  geom_errorbar(aes(ymin=value-sd, ymax=value+sd), position=position_dodge2(), linewidth=0.5) +
   facet_grid(landscape ~ name,
-             scales = "free_y", switch = "y"
+             scales = "free_y"
   ) +
-  labs(y = "Forest change [%]", x = "Level", col = "Process") +
-  scale_x_continuous(labels = c("Ref.", "2", "5", "10"), breaks = c(1, 2, 5, 10)) +
-  scale_color_manual(values = c(
-    "Disturbance size" = "#b35806",
-    "Disturbance frequency" = "#f46d43",
-    "Seed production" = "#542788",
-    "Sapling growth" = "#2166ac"
+  #coord_flip() +
+  labs(y = "Forest change [%]", x = "Level", fill = "Process") +
+  scale_x_continuous(labels = c("Ref.", "2", "5", "10"), breaks = 1:4) +
+  scale_fill_manual(values = c(
+    "Disturbance size" = "#fe9929",
+    "Disturbance frequency" = "#fec44f",
+    "Seed production" = "#7bccc4",
+    "Sapling growth" = "#4eb3d3"
   )) +
   theme_bw() +
-  theme(legend.position = "top")
+  theme(
+    legend.position = "right",
+    axis.title = ggplot2::element_text(size = 16),
+    axis.text = ggplot2::element_text(size = 14),
+    strip.text.x = element_text(size = 12),
+    strip.text.y = element_text(size = 12),
+    legend.title = ggplot2::element_text(size = 14, angle = 0),
+    legend.text = ggplot2::element_text(size = 12),
+    legend.box = "horizontal",
+    legend.box.margin = ggplot2::margin(0, 0, 20, 0)
+  )
 dev.off()
 
 rm(singleProcess.df, singleProcess.mean)
